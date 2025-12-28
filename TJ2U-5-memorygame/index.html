@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="google" content="notranslate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flip & Find (Timer)</title>
+  <style>
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:#ffe6f1;
+      display:flex; min-height:100vh; align-items:center; justify-content:center;
+      padding:18px;
+    }
+    .app{
+      width:min(920px, 100%);
+      background: rgba(255,255,255,0.92);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+    }
+    .top{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; }
+    h1{ margin:0; font-size:20px; }
+    .hint{ font-size:14px; opacity:.85; margin-top:4px; }
+    .controls{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    button{
+      border:0; padding:10px 12px; border-radius:12px;
+      cursor:pointer; font-weight:900; background:#111; color:#fff;
+    }
+    button.secondary{ background:#fff; color:#111; border:2px solid #111; }
+    button:disabled{ opacity:.5; cursor:not-allowed; }
+
+    .status{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+      margin: 12px 0 14px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background:#fff;
+      border:2px solid rgba(0,0,0,0.08);
+    }
+    .badge{
+      background:#fff3a6;
+      padding: 6px 10px;
+      border-radius:999px;
+      font-weight: 900;
+    }
+    .prompt{ font-size:18px; font-weight:1000; }
+
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap:14px;
+    }
+    @media (max-width: 720px){
+      .grid{ grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .card{
+      height: 210px;
+      perspective: 900px;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .inner{
+      position:relative; width:100%; height:100%;
+      transform-style: preserve-3d;
+      transition: transform .45s ease;
+    }
+    .card.flipped .inner{ transform: rotateY(180deg); }
+
+    .face{
+      position:absolute; inset:0;
+      backface-visibility:hidden;
+      border-radius:18px;
+      display:flex; align-items:center; justify-content:center;
+      border:3px solid rgba(0,0,0,0.12);
+      box-shadow: 0 10px 18px rgba(0,0,0,0.12);
+      background:#fff;
+      overflow:hidden;
+    }
+    .front{
+      background: linear-gradient(135deg, #ffffff, #fff5fb);
+      flex-direction:column; gap:8px;
+      font-weight: 1000;
+    }
+    .front .emoji{ font-size:44px; }
+    .front .txt{ font-size:16px; opacity:.8; }
+    .back{ transform: rotateY(180deg); padding:8px; }
+    .back img{ width:100%; height:100%; object-fit:contain; border-radius:14px; }
+
+    .card.found{
+      outline: 5px solid rgba(46, 204, 113, 0.55);
+      border-radius:18px;
+    }
+
+    .toast{ margin-top:10px; font-weight:1000; min-height:24px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="top">
+      <div>
+        <h1>Flip & Find (Halloween)</h1>
+        <div class="hint">Computer says a word → flip the correct card. (Auto shuffle forever)</div>
+      </div>
+      <div class="controls">
+        <button id="startBtn">Start (Enable Voice)</button>
+        <button id="repeatBtn" class="secondary" disabled>Repeat</button>
+        <button id="newBtn" class="secondary" disabled>Next Round</button>
+      </div>
+    </div>
+
+    <div class="status">
+      <div class="badge">Round: <span id="roundNum">0</span></div>
+      <div class="badge">Score: <span id="scoreNum">0</span></div>
+      <div class="badge">Time: <span id="timeNum">0</span>s</div>
+      <div class="prompt">Find: <span id="promptText">—</span></div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+<script>
+(() => {
+  // ===== 你只改這裡 =====
+  const ROUND_SECONDS = 30;        // 每輪倒數秒數
+  const AUTO_NEXT_DELAY = 900;     // 一輪結束後自動下一輪的等待(ms)
+  // ======================
+
+  const CARDS = [
+    { key: "bat",   img: "bat.png",   speak: "Bat" },
+    { key: "witch", img: "witch.png", speak: "Witch" },
+    { key: "ghost", img: "ghost.png", speak: "Ghost" },
+    { key: "candy", img: "candy.png", speak: "Candy" },
+  ];
+
+  const grid = document.getElementById("grid");
+  const toast = document.getElementById("toast");
+  const promptText = document.getElementById("promptText");
+  const scoreNum = document.getElementById("scoreNum");
+  const roundNum = document.getElementById("roundNum");
+  const timeNum = document.getElementById("timeNum");
+
+  const startBtn = document.getElementById("startBtn");
+  const repeatBtn = document.getElementById("repeatBtn");
+  const newBtn = document.getElementById("newBtn");
+
+  let enabledAudio = false;
+  let currentTarget = null;
+  let found = new Set();
+  let order = [];
+  let score = 0;
+  let round = 0;
+  let busy = false;
+
+  let timerId = null;
+  let remaining = ROUND_SECONDS;
+  let roundRunning = false;
+
+  const shuffle = (arr) => {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  const setToast = (msg) => toast.textContent = msg || "";
+
+  function updateUI(){
+    roundNum.textContent = String(round);
+    scoreNum.textContent = String(score);
+    timeNum.textContent = String(remaining);
+    promptText.textContent = currentTarget ? currentTarget.speak : "—";
+  }
+
+  function speak(text){
+    if (!enabledAudio) return;
+    try{
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "en-US";
+      u.rate = 0.9;
+      u.pitch = 1.05;
+      window.speechSynthesis.speak(u);
+    } catch(e){}
+  }
+
+  function cheer(){
+    if (!enabledAudio) return;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+
+    const freqs = [523.25, 659.25, 783.99];
+    freqs.forEach((f, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(f, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.33 + idx*0.03);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.42 + idx*0.03);
+    });
+
+    setTimeout(() => ctx.close().catch(()=>{}), 700);
+  }
+
+  function render(){
+    grid.innerHTML = "";
+    order.forEach(card => {
+      const el = document.createElement("div");
+      el.className = "card";
+      el.dataset.key = card.key;
+
+      el.innerHTML = `
+        <div class="inner">
+          <div class="face front">
+            <div class="emoji">😊</div>
+            <div class="txt">Tap to flip</div>
+          </div>
+          <div class="face back">
+            <img src="${card.img}" alt="${card.key}">
+          </div>
+        </div>
+      `;
+
+      el.addEventListener("click", () => onFlip(el, card));
+      grid.appendChild(el);
+    });
+  }
+
+  function pickTarget(){
+    if (!roundRunning) return;
+    const remainingCards = CARDS.filter(c => !found.has(c.key));
+    if (remainingCards.length === 0){
+      endRound(true);
+      return;
+    }
+    currentTarget = remainingCards[Math.floor(Math.random() * remainingCards.length)];
+    updateUI();
+    speak(currentTarget.speak);
+    setToast("Listen and flip the correct card!");
+  }
+
+  function onFlip(cardEl, card){
+    if (busy || !roundRunning) return;
+    if (!enabledAudio){
+      setToast("👉 Please click Start first (Enable Voice).");
+      return;
+    }
+    if (found.has(card.key)) return;
+
+    cardEl.classList.add("flipped");
+
+    if (currentTarget && card.key === currentTarget.key){
+      busy = true;
+      found.add(card.key);
+      score += 10;
+      cardEl.classList.add("found");
+      setToast("✅ Correct! Yay!");
+      cheer();
+      speak(card.speak);
+
+      updateUI();
+
+      setTimeout(() => {
+        busy = false;
+        pickTarget();
+      }, 450);
+    } else {
+      busy = true;
+      setToast("❌ Try again!");
+      setTimeout(() => {
+        cardEl.classList.remove("flipped");
+        busy = false;
+      }, 380);
+    }
+  }
+
+  function startTimer(){
+    clearInterval(timerId);
+    remaining = ROUND_SECONDS;
+    updateUI();
+
+    timerId = setInterval(() => {
+      remaining -= 1;
+      if (remaining < 0) remaining = 0;
+      updateUI();
+
+      if (remaining === 0){
+        endRound(false);
+      }
+    }, 1000);
+  }
+
+  function endRound(completedAll){
+    roundRunning = false;
+    clearInterval(timerId);
+    timerId = null;
+
+    if (completedAll){
+      setToast("🎉 All found! New round starts...");
+    } else {
+      setToast("⏰ Time's up! New round starts...");
+      speak("Time's up");
+    }
+
+    setTimeout(() => {
+      newRound();
+    }, AUTO_NEXT_DELAY);
+  }
+
+  function newRound(){
+    round += 1;
+    found = new Set();
+    currentTarget = null;
+    order = shuffle(CARDS);
+
+    // reset flips visually
+    render();
+    document.querySelectorAll(".card").forEach(c => c.classList.remove("flipped","found"));
+
+    roundRunning = true;
+    startTimer();
+    pickTarget();
+  }
+
+  // Buttons
+  startBtn.addEventListener("click", () => {
+    enabledAudio = true;             // iPhone 需要手動點一次才能發聲
+    startBtn.disabled = true;
+    repeatBtn.disabled = false;
+    newBtn.disabled = false;
+    setToast("✅ Voice enabled. Let's play!");
+    speak("Let's play");
+    setTimeout(newRound, 250);
+  });
+
+  repeatBtn.addEventListener("click", () => {
+    if (!currentTarget) return;
+    speak(currentTarget.speak);
+  });
+
+  newBtn.addEventListener("click", () => {
+    if (!enabledAudio) return;
+    newRound();
+  });
+
+  // Initial
+  order = shuffle(CARDS);
+  render();
+  remaining = ROUND_SECONDS;
+  updateUI();
+  setToast("Click Start to enable voice (required on iPhone/iPad).");
+})();
+</script>
+</body>
+</html>
