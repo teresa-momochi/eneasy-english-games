@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yes / No Sentence Builder</title>
+
+<style>
+  body{
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #ffe4ec, #fff6f0);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+    margin:0;
+  }
+  .card{
+    width:min(720px, 94vw);
+    background: rgba(255,255,255,0.90);
+    border-radius: 26px;
+    padding: 18px 18px 24px;
+    box-shadow: 0 14px 34px rgba(0,0,0,.14);
+    text-align:center;
+  }
+  .top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap: 10px;
+    font-size:16px;
+    opacity:.75;
+    margin-bottom:6px;
+  }
+  .speakBtn{
+    border:0;
+    border-radius: 12px;
+    padding: 8px 12px;
+    font-weight: 900;
+    cursor:pointer;
+    box-shadow: 0 8px 16px rgba(0,0,0,.10);
+    background:#f2f2f2;
+  }
+  h2{
+    font-size: clamp(26px, 4vw, 40px);
+    margin: 10px 0 12px;
+    font-weight: 900;
+  }
+  img{
+    width: min(320px, 76vw);
+    height:auto;
+    border-radius: 18px;
+    background:#fff;
+    padding: 10px;
+    box-shadow: 0 10px 20px rgba(0,0,0,.10);
+    user-select:none;
+    -webkit-user-drag:none;
+  }
+
+  /* ✅ 答案同一排：不准換行 */
+  #answerLine{
+    margin-top: 14px;
+    min-height: 46px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  #answer{
+    font-size: clamp(22px, 3.3vw, 30px);
+    font-weight: 900;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .words{
+    margin-top: 16px;
+    display:flex;
+    flex-wrap: nowrap;     /* ✅ 同一排 */
+    gap: 10px;
+    justify-content:center;
+    overflow-x:auto;       /* 手機窄就左右滑 */
+    padding: 10px 6px;
+  }
+  .word{
+    flex: 0 0 auto;
+    padding: 14px 18px;
+    font-size: clamp(20px, 3.2vw, 28px);
+    font-weight: 900;
+    background:#f2f2f2;
+    border-radius: 16px;
+    cursor:pointer;
+    user-select:none;
+    box-shadow: 0 8px 16px rgba(0,0,0,.10);
+    border: 2px solid rgba(0,0,0,0.05);
+  }
+  .word.used{
+    background:#cfcfcf;
+    cursor:not-allowed;
+    box-shadow:none;
+  }
+
+  .shake{ animation: shake .35s ease; }
+  @keyframes shake{
+    0%{transform:translateX(0)}
+    20%{transform:translateX(-10px)}
+    40%{transform:translateX(10px)}
+    60%{transform:translateX(-8px)}
+    80%{transform:translateX(8px)}
+    100%{transform:translateX(0)}
+  }
+
+  #hint{
+    margin-top: 6px;
+    min-height: 22px;
+    font-weight: 900;
+    opacity: .75;
+  }
+</style>
+</head>
+
+<body>
+<div class="card" id="card">
+  <div class="top">
+    <div id="progress">1 / 12</div>
+
+    <div style="display:flex; gap:10px; align-items:center;">
+      <button class="speakBtn" id="btnSpeakQ">🔊 Question</button>
+      <button class="speakBtn" id="btnSpeakA">🔊 Answer</button>
+    </div>
+  </div>
+
+  <h2 id="question"></h2>
+  <img id="image" alt="object">
+
+  <div id="answerLine"><div id="answer"></div></div>
+  <div id="hint"></div>
+
+  <div class="words" id="words"></div>
+</div>
+
+<script>
+  // ✅ 12題：4個物件都當主角（每個物件 1 Yes + 2 No）
+  const questions = [
+    // ruler
+    { q: "Is that a ruler?",  img: "ruler.png",  answer: true  },
+    { q: "Is that a marker?", img: "ruler.png",  answer: false },
+    { q: "Is that a clock?",  img: "ruler.png",  answer: false },
+
+    // marker
+    { q: "Is that a marker?", img: "marker.png", answer: true  },
+    { q: "Is that a ruler?",  img: "marker.png", answer: false },
+    { q: "Is that a TV?",     img: "marker.png", answer: false },
+
+    // tv
+    { q: "Is that a TV?",     img: "tv.png",     answer: true  },
+    { q: "Is that a ruler?",  img: "tv.png",     answer: false },
+    { q: "Is that a clock?",  img: "tv.png",     answer: false },
+
+    // clock
+    { q: "Is that a clock?",  img: "clock.png",  answer: true  },
+    { q: "Is that a TV?",     img: "clock.png",  answer: false },
+    { q: "Is that a marker?", img: "clock.png",  answer: false },
+  ];
+
+  function shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
+  }
+
+  // ===== 叮咚（保留）=====
+  let audioCtx = null;
+  function ensureAudio(){
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === "suspended") audioCtx.resume();
+  }
+  function beep(freq=880, duration=0.12){
+    ensureAudio();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type="sine";
+    o.frequency.value=freq;
+    g.gain.value=0.0001;
+    o.connect(g); g.connect(audioCtx.destination);
+    const now = audioCtx.currentTime;
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.25, now+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, now+duration);
+    o.start(now);
+    o.stop(now+duration+0.02);
+  }
+  function dingDing(){
+    beep(880,0.12);
+    setTimeout(()=>beep(660,0.14), 140);
+  }
+
+  // ===== ✅ TTS（朗讀）=====
+  let speechUnlocked = false;
+
+  function speak(text){
+    if(!("speechSynthesis" in window)) return;
+
+    // 停掉前一次
+    window.speechSynthesis.cancel();
+
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US";
+    u.rate = 0.95;   // 小朋友清楚一點
+    u.pitch = 1.05;
+
+    // 有些裝置會需要先被「解鎖」：我們在第一次點字卡時 set speechUnlocked=true
+    window.speechSynthesis.speak(u);
+  }
+
+  function unlockSpeechIfNeeded(){
+    if(speechUnlocked) return;
+    speechUnlocked = true;
+
+    // 用一個極短的發音「啟動」(部分 iOS 需要在手勢觸發下)
+    try { speak("Okay"); } catch(e) {}
+  }
+
+  // ===== DOM =====
+  const card = document.getElementById("card");
+  const qEl = document.getElementById("question");
+  const imgEl = document.getElementById("image");
+  const ansEl = document.getElementById("answer");
+  const hintEl = document.getElementById("hint");
+  const wordsEl = document.getElementById("words");
+  const progEl = document.getElementById("progress");
+  const btnSpeakQ = document.getElementById("btnSpeakQ");
+  const btnSpeakA = document.getElementById("btnSpeakA");
+
+  // ===== 遊戲狀態 =====
+  let quiz = shuffle([...questions]);
+  let index = 0;
+  let expected = [];
+  let current = [];
+
+  const wordBank = ["Yes","No",",","it","is","not","."];
+
+  function formatAnswer(tokens){
+    // ✅ 標點不要前空格：Yes, it is.
+    let s = "";
+    for(const t of tokens){
+      if(t === "," || t === "."){
+        s += t;
+      }else{
+        if(s.length && !s.endsWith(",") && !s.endsWith(" ")) s += " ";
+        if(s.endsWith(",")) s += " ";
+        s += t;
+      }
+    }
+    return s;
+  }
+
+  function resetCurrent(){
+    current = [];
+    ansEl.textContent = "";
+    [...wordsEl.querySelectorAll(".word")].forEach(w=>w.classList.remove("used"));
+  }
+
+  function getExpectedAnswerText(){
+    // ✅ 朗讀用，直接念完整句子
+    return expected.join(" ").replace(" ,", ",").replace(" .", ".");
+  }
+
+  function loadQuestion(){
+    const item = quiz[index];
+    qEl.textContent = item.q;
+    imgEl.src = item.img;
+    progEl.textContent = `${index+1} / ${quiz.length}`;
+    hintEl.textContent = "";
+    resetCurrent();
+
+    expected = item.answer
+      ? ["Yes",",","it","is","."]
+      : ["No",",","it","is","not","."];
+
+    // render word cards
+    wordsEl.innerHTML = "";
+    wordBank.forEach(w=>{
+      const d = document.createElement("div");
+      d.className = "word";
+      d.textContent = w;
+      d.addEventListener("click", ()=>pick(d,w));
+      wordsEl.appendChild(d);
+    });
+
+    // ✅ 題目朗讀：要先解鎖語音才會自動念（iPhone）
+    if(speechUnlocked){
+      speak(item.q);
+    }else{
+      hintEl.textContent = "👆 Tap any word once to start voice.";
+    }
+  }
+
+  function wrong(){
+    card.classList.remove("shake");
+    void card.offsetWidth;
+    card.classList.add("shake");
+    hintEl.textContent = "❌ Wrong! Try again.";
+    setTimeout(()=>{
+      card.classList.remove("shake");
+      hintEl.textContent = "";
+      resetCurrent(); // 答錯：清空重做同一題
+    }, 550);
+  }
+
+  function next(){
+    index++;
+    if(index >= quiz.length){
+      quiz = shuffle([...questions]);
+      index = 0;
+    }
+    loadQuestion();
+  }
+
+  function pick(el, word){
+    // ✅ 第一次點字卡：解鎖語音（iPhone需要）
+    unlockSpeechIfNeeded();
+    ensureAudio(); // 叮咚也需要手勢觸發最穩
+
+    const step = current.length;
+    if(word === expected[step]){
+      current.push(word);
+      el.classList.add("used");
+      ansEl.textContent = formatAnswer(current);
+
+      if(current.length === expected.length){
+        hintEl.textContent = "✅ Great!";
+        dingDing();
+
+        // ✅ 答對：念出正確答案
+        speak(getExpectedAnswerText());
+
+        setTimeout(next, 900);
+      }
+    }else{
+      wrong();
+    }
+  }
+
+  // 手動朗讀按鈕
+  btnSpeakQ.addEventListener("click", ()=>{
+    unlockSpeechIfNeeded();
+    speak(quiz[index].q);
+  });
+
+  btnSpeakA.addEventListener("click", ()=>{
+    unlockSpeechIfNeeded();
+    speak(getExpectedAnswerText());
+  });
+
+  loadQuestion();
+</script>
+</body>
+</html>
