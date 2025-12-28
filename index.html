@@ -1,615 +1,83 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="google" content="notranslate">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Swap to Questions! (5 Items / Messy Bank)</title>
+  <title>English Games入口</title>
   <style>
-    :root{
-      --bg1:#ffd6ea;
-      --bg2:#fff3fa;
-      --card:#ffffff;
-      --shadow: 0 16px 34px rgba(0,0,0,.14);
-      --tileShadow: 0 12px 20px rgba(0,0,0,.14);
-      --border: rgba(0,0,0,.10);
-      --mint:#d7fff1;
-      --sky:#dff1ff;
-      --lemon:#fff3a6;
-      --lav:#efe4ff;
-      --pink:#ffd8ef;
-      --ok: rgba(46, 204, 113, .35);
-      --warn: rgba(231, 76, 60, .22);
+    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Arial; background:#f6f7ff; color:#222;}
+    header{padding:18px 16px; text-align:center; background:#fff; border-bottom:1px solid #e9e9f6;}
+    h1{margin:0;font-size:20px;}
+    p{margin:6px 0 0;color:#666;font-size:14px;}
+    main{max-width:900px;margin:0 auto;padding:18px 16px;}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;}
+    a.card{
+      display:block; text-decoration:none; color:inherit;
+      background:#fff; border:1px solid #e9e9f6; border-radius:14px;
+      padding:14px; box-shadow:0 6px 18px rgba(0,0,0,.06);
     }
-
-    *{ box-sizing:border-box; }
-    body{
-      margin:0;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-      background: radial-gradient(circle at top, var(--bg2), var(--bg1));
-      min-height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:14px;
-    }
-
-    .app{
-      width:min(1020px, 100%);
-      background: rgba(255,255,255,0.92);
-      border-radius: 24px;
-      box-shadow: var(--shadow);
-      padding: 14px;
-    }
-
-    .top{
-      display:flex; gap:10px; flex-wrap:wrap;
-      justify-content:space-between; align-items:center;
-      margin-bottom: 10px;
-    }
-    h1{ margin:0; font-size:20px; }
-    .hint{ margin-top:4px; font-size:14px; opacity:.85; }
-
-    .controls{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    button{
-      border:0;
-      padding:10px 12px;
-      border-radius: 14px;
-      cursor:pointer;
-      font-weight: 900;
-      background:#111;
-      color:#fff;
-      box-shadow: 0 8px 16px rgba(0,0,0,.12);
-    }
-    button.secondary{
-      background:#fff;
-      color:#111;
-      border:2px solid #111;
-      box-shadow:none;
-    }
-    button:disabled{ opacity:.5; cursor:not-allowed; }
-
-    .badges{
-      display:flex; gap:10px; flex-wrap:wrap;
-      margin: 6px 0 12px;
-    }
-    .badge{
-      background: var(--lemon);
-      padding: 8px 12px;
-      border-radius: 999px;
-      font-weight: 1000;
-      border: 2px solid rgba(0,0,0,.06);
-    }
-
-    .block{
-      background: var(--card);
-      border-radius: 18px;
-      border: 2px solid rgba(0,0,0,.06);
-      padding: 12px;
-      margin-bottom: 12px;
-    }
-
-    .blockTitle{
-      font-weight: 1000;
-      margin-bottom: 8px;
-      display:flex; align-items:center; gap:8px;
-    }
-    .chip{
-      font-size: 12px;
-      font-weight: 1000;
-      padding: 5px 10px;
-      border-radius: 999px;
-      background: var(--lav);
-      border: 2px solid rgba(0,0,0,.06);
-    }
-
-    .sentence{
-      display:flex;
-      flex-wrap:wrap;
-      gap: 12px;
-      align-items:center;
-      justify-content:center;
-      min-height: 74px;
-      padding: 10px;
-      border-radius: 16px;
-      background: linear-gradient(180deg, #ffffff, #fafafa);
-      border: 2px dashed rgba(0,0,0,.12);
-    }
-
-    /* 句首自動大寫：Statement & Question */
-    #statementRow .slot:first-child .tileText,
-    #questionRow  .slot:first-child .tileText{
-      text-transform: capitalize;
-    }
-
-    .slot{
-      width: 160px;
-      min-height: 60px;
-      border-radius: 18px;
-      background:#fff;
-      border: 2px solid var(--border);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding: 6px;
-      position: relative;
-    }
-
-    /* punctuation slot smaller */
-    .slot.punct{
-      width: 80px;
-      min-height: 60px;
-      padding: 4px;
-      background: #f4f6f8;
-      border-style: dashed;
-      opacity: .95;
-    }
-    .slot.punct .tile{
-      min-width: unset;
-      padding: 10px 8px;
-      font-size: 22px;
-    }
-
-    /* keyboard-like inset */
-    .slot::after{
-      content:"";
-      position:absolute;
-      inset: 6px;
-      border-radius: 14px;
-      background: rgba(0,0,0,.03);
-      z-index:0;
-    }
-    .slot > *{ position: relative; z-index:1; }
-
-    .tile{
-      min-width: 150px;
-      padding: 14px 12px;
-      border-radius: 18px;
-      font-weight: 1000;
-      text-align:center;
-      cursor: grab;
-      user-select:none;
-      -webkit-tap-highlight-color: transparent;
-
-      background: linear-gradient(180deg, #ffffff, #f7f7f7);
-      border: 2px solid rgba(0,0,0,.10);
-      box-shadow: var(--tileShadow);
-      transform: translateY(0);
-      transition: transform .08s ease;
-    }
-    .tile:active{
-      cursor: grabbing;
-      transform: translateY(2px);
-      box-shadow: 0 6px 12px rgba(0,0,0,.12);
-    }
-    .tile[data-color="mint"]{ background: linear-gradient(180deg, #ffffff, var(--mint)); }
-    .tile[data-color="pink"]{ background: linear-gradient(180deg, #ffffff, var(--pink)); }
-    .tile[data-color="lav"]{  background: linear-gradient(180deg, #ffffff, var(--lav)); }
-    .tile[data-color="sky"]{  background: linear-gradient(180deg, #ffffff, var(--sky)); }
-    .tile[data-color="lemon"]{background: linear-gradient(180deg, #ffffff, var(--lemon)); }
-
-    .toast{
-      margin-top: 8px;
-      font-weight: 1000;
-      min-height: 28px;
-      text-align:center;
-    }
-
-    /* Answer sticky bottom */
-    .answerSticky{
-      position: sticky;
-      bottom: 10px;
-      z-index: 5;
-      box-shadow: 0 10px 24px rgba(0,0,0,.10);
-    }
-
-    /* ======= Messy Word Bank (irregular) ======= */
-    .bankArea{
-      position: relative;
-      min-height: 160px;
-      border-radius: 16px;
-      border: 2px solid rgba(0,0,0,.06);
-      background: linear-gradient(180deg, var(--sky), #ffffff);
-      overflow: hidden;
-    }
-    .bankArea .tile{
-      position: absolute; /* 亂灑 */
-      min-width: 140px;
-    }
-
-    /* feedback effects */
-    .okGlow{ outline: 6px solid var(--ok); animation: pop .25s ease-out; }
-    .warnGlow{ outline: 6px solid var(--warn); animation: shake .35s ease-in-out; }
-
-    @keyframes shake{
-      0%{ transform: translateX(0); }
-      25%{ transform: translateX(-6px); }
-      50%{ transform: translateX(6px); }
-      75%{ transform: translateX(-4px); }
-      100%{ transform: translateX(0); }
-    }
-    @keyframes pop{
-      0%{ transform: scale(1); }
-      60%{ transform: scale(1.04); }
-      100%{ transform: scale(1); }
-    }
-
-    @media (max-width: 760px){
-      .slot{ width: 46%; min-height: 64px; }
-      .slot.punct{ width: 30%; }
-      .tile{ min-width: 44%; padding: 16px 12px; }
-      .sentence{ justify-content: space-between; }
-      .answerSticky{ bottom: 6px; }
-      .bankArea{ min-height: 210px; }
-      .bankArea .tile{ min-width: 44%; }
-    }
+    a.card:hover{transform:translateY(-1px);}
+    .tag{display:inline-block;font-size:12px;color:#444;background:#f0f2ff;border:1px solid #e9e9f6;padding:2px 8px;border-radius:999px;}
+    .title{margin:10px 0 2px;font-weight:700;}
+    .sub{margin:0;color:#666;font-size:13px;}
+    footer{padding:14px 16px;text-align:center;color:#777;font-size:12px;}
   </style>
 </head>
-
 <body>
-<div class="app">
-  <div class="top">
-    <div>
-      <h1>Swap to Questions! ✅（五題固定・亂灑思考版）</h1>
-      <div class="hint">把字卡拖到最下面組成疑問句。句首自動大寫、句尾要 <b>?</b>。每題都會重新洗牌亂灑。</div>
+  <header>
+    <h1>English Games 入口</h1>
+    <p>請用 Chrome 開啟，點選今天老師指定的遊戲。</p>
+  </header>
+
+  <main>
+    <div class="grid">
+      <a class="card" href="./TJ2-U1-2-memorygame/">
+        <span class="tag">Memory Game</span>
+        <div class="title">TJ2-U1-2</div>
+        <div class="sub">點我進入遊戲</div>
+      </a>
+
+      <a class="card" href="./TJ2-U11-sentencematching/">
+        <span class="tag">Sentence</span>
+        <div class="title">TJ2-U11</div>
+        <div class="sub">點我進入遊戲</div>
+      </a>
+
+      <a class="card" href="./TJ2-U2-3-wordlistening/">
+        <span class="tag">Listening</span>
+        <div class="title">TJ2-U2-3</div>
+        <div class="sub">點我進入遊戲</div>
+      </a>
+
+      <a class="card" href="./TJ2-U2-spellingpractice/">
+        <span class="tag">Spelling</span>
+        <div class="title">TJ2-U2</div>
+        <div class="sub">點我進入遊戲</div>
+      </a>
+
+      <a class="card" href="./TJ2-U6-spellingprace/">
+        <span class="tag">Spelling</span>
+        <div class="title">TJ2-U6</div>
+        <div class="sub">點我進入遊戲</div>
+      </a>
+
+      <a class="card" href="./TJ2-U7-memorygame/">
+        <span class="tag">Memory Game</span>
+        <div class="title">TJ2-U7</div>
+        <div class="sub">點我進入遊戲</div>
+      </a>
+
+      <a class="card" href="./TJ2-U7-sentencematching/">
+        <span class="tag">Sentence</span>
+        <div class="title">TJ2-U7</div>
+        <div class="sub">點我進入遊戲</div>
+      </a>
     </div>
-    <div class="controls">
-      <button id="startBtn">Start (Enable Voice)</button>
-      <button id="repeatBtn" class="secondary" disabled>Repeat</button>
-      <button id="resetBtn" class="secondary">Restart</button>
-    </div>
-  </div>
+  </main>
 
-  <div class="badges">
-    <div class="badge">Item: <span id="itemNum">1</span>/5</div>
-    <div class="badge">Score: <span id="scoreNum">0</span></div>
-  </div>
-
-  <!-- Statement (top) -->
-  <div class="block">
-    <div class="blockTitle">🟦 Statement <span class="chip">看句型</span></div>
-    <div class="sentence" id="statementRow"></div>
-  </div>
-
-  <!-- Word Bank (middle messy) -->
-  <div class="block">
-    <div class="blockTitle">🧩 Word Bank <span class="chip">亂灑（要思考）</span></div>
-    <div class="bankArea" id="bankArea"></div>
-    <div class="toast" id="toast"></div>
-  </div>
-
-  <!-- Answer (bottom sticky) -->
-  <div class="block answerSticky">
-    <div class="blockTitle">❓ Make the Question <span class="chip">拖到下面（最省力）</span></div>
-    <div class="sentence" id="questionRow"></div>
-  </div>
-</div>
-
-<script>
-(() => {
-  // ====== 你指定的 5 題（完全固定） ======
-  const ITEMS = [
-    { statement:["it","is","an","ant","."],      answerQ:["is","it","an","ant","?"],      speak:"Is it an ant?" },
-    { statement:["you","are","Abby","."],       answerQ:["are","you","Abby","?"],        speak:"Are you Abby?" },
-    { statement:["he","is","Nick","."],        answerQ:["is","he","Nick","?"],          speak:"Is he Nick?" },
-    { statement:["she","is","Fifi","."],       answerQ:["is","she","Fifi","?"],         speak:"Is she Fifi?" },
-    { statement:["this","is","a","star","."],  answerQ:["is","this","a","star","?"],    speak:"Is this a star?" },
-  ];
-
-  const COLORS = ["mint","pink","lav","sky","lemon"];
-
-  const statementRow = document.getElementById("statementRow");
-  const questionRow  = document.getElementById("questionRow");
-  const bankArea     = document.getElementById("bankArea");
-  const toast        = document.getElementById("toast");
-
-  const itemNum      = document.getElementById("itemNum");
-  const scoreNum     = document.getElementById("scoreNum");
-
-  const startBtn  = document.getElementById("startBtn");
-  const repeatBtn = document.getElementById("repeatBtn");
-  const resetBtn  = document.getElementById("resetBtn");
-
-  let enabledAudio = false;
-  let selectedTileId = null;
-
-  let idx = 0;
-  let score = 0;
-
-  // ---------- helpers ----------
-  const shuffle = (arr) => {
-    const a = arr.slice();
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  };
-
-  function setToast(msg){ toast.textContent = msg || ""; }
-
-  function speak(text){
-    if (!enabledAudio) return;
-    try{
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = "en-US";
-      u.rate = 0.9;
-      u.pitch = 1.05;
-      window.speechSynthesis.speak(u);
-    }catch(e){}
-  }
-
-  function cheer(){
-    if (!enabledAudio) return;
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const now = ctx.currentTime;
-    const freqs = [523.25, 659.25, 783.99];
-    freqs.forEach((f, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type="sine";
-      osc.frequency.setValueAtTime(f, now);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.33 + i*0.03);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.42 + i*0.03);
-    });
-    setTimeout(() => ctx.close().catch(()=>{}), 700);
-  }
-
-  function clearEl(el){ el.innerHTML = ""; }
-
-  // ---------- tiles/slots ----------
-  function makeStaticTile(text, color){
-    const t = document.createElement("div");
-    t.className = "tile";
-    t.style.cursor = "default";
-    t.dataset.color = color;
-    t.innerHTML = `<span class="tileText">${text}</span>`;
-    return t;
-  }
-
-  function makeTile(text, color){
-    const t = document.createElement("div");
-    t.className = "tile";
-    t.dataset.text = text;
-    t.dataset.color = color;
-
-    const id = "tile_" + Math.random().toString(16).slice(2);
-    t.id = id;
-    t.setAttribute("draggable","true");
-
-    t.addEventListener("dragstart", (e) => {
-      selectedTileId = id;
-      e.dataTransfer.setData("text/plain", id);
-    });
-
-    // tap-select fallback (mobile)
-    t.addEventListener("click", () => {
-      selectedTileId = id;
-      setToast(`👉 已選：${text}（點下面空格放入）`);
-    });
-
-    t.innerHTML = `<span class="tileText">${text}</span>`;
-    return t;
-  }
-
-  function makeSlot(i, isPunct){
-    const s = document.createElement("div");
-    s.className = "slot" + (isPunct ? " punct" : "");
-    s.dataset.slotIndex = String(i);
-
-    s.addEventListener("dragover", (e)=> e.preventDefault());
-    s.addEventListener("drop", (e)=>{
-      e.preventDefault();
-      const tileId = e.dataTransfer.getData("text/plain");
-      if (tileId) placeTile(tileId, s);
-    });
-
-    // tap-to-place
-    s.addEventListener("click", ()=>{
-      if (selectedTileId) placeTile(selectedTileId, s);
-    });
-
-    return s;
-  }
-
-  // ---------- classroom-safe placement rules (but NO category hints) ----------
-  function placeTile(tileId, slotEl){
-    const tile = document.getElementById(tileId);
-    if (!tile) return;
-
-    const text = tile.dataset.text;
-    const slotIndex = Number(slotEl.dataset.slotIndex);
-    const slots = questionRow.querySelectorAll(".slot");
-    const lastIndex = slots.length - 1;
-
-    // ? only last slot
-    if (text === "?" && slotIndex !== lastIndex){
-      setToast("👉 問號一定要放最後喔！");
-      bankArea.appendChild(tile);
-      randomScatter(); // 回去也亂灑
-      return;
-    }
-    // last slot only ?
-    if (slotIndex === lastIndex && text !== "?"){
-      setToast("👉 最後一格是 ? 的位置喔！");
-      bankArea.appendChild(tile);
-      randomScatter();
-      return;
-    }
-
-    // first slot only is/are (讓規則穩，但不提示名詞/主詞)
-    if (slotIndex === 0 && !(text === "is" || text === "are")){
-      setToast("👉 第一格要放 is / are");
-      bankArea.appendChild(tile);
-      randomScatter();
-      return;
-    }
-
-    // is/are must be early (0 or 1)
-    if ((text === "is" || text === "are") && slotIndex > 1){
-      setToast("👉 is / are 要放前面！");
-      bankArea.appendChild(tile);
-      randomScatter();
-      return;
-    }
-
-    // swap existing tile back to bank
-    const existing = slotEl.querySelector(".tile");
-    if (existing){
-      bankArea.appendChild(existing);
-    }
-
-    // IMPORTANT: when tile is moved out of bankArea, remove absolute positioning
-    tile.style.left = "";
-    tile.style.top = "";
-    tile.style.transform = "";
-
-    slotEl.appendChild(tile);
-    selectedTileId = null;
-
-    checkAnswer();
-  }
-
-  // ---------- layout: messy scatter ----------
-  function randomScatter(){
-    // 只對 bankArea 裡面的 tile 亂灑
-    const tiles = [...bankArea.querySelectorAll(".tile")];
-    const rect = bankArea.getBoundingClientRect();
-
-    // leave padding
-    const pad = 12;
-    const W = Math.max(200, rect.width) - pad*2;
-    const H = Math.max(160, rect.height) - pad*2;
-
-    tiles.forEach((t, i) => {
-      // random position
-      const x = pad + Math.random() * (W - 160);
-      const y = pad + Math.random() * (H - 70);
-
-      // random slight rotation for "messy" feel
-      const r = (Math.random()*10 - 5);
-
-      t.style.left = x + "px";
-      t.style.top = y + "px";
-      t.style.transform = `rotate(${r}deg)`;
-    });
-  }
-
-  // ---------- check answer ----------
-  function currentTokens(){
-    return [...questionRow.querySelectorAll(".slot")].map(s=>{
-      const t = s.querySelector(".tile");
-      return t ? t.dataset.text : null;
-    });
-  }
-
-  function checkAnswer(){
-    const item = ITEMS[idx];
-    const tokens = currentTokens();
-
-    if (tokens.some(x => x === null)){
-      questionRow.classList.remove("okGlow","warnGlow");
-      return;
-    }
-
-    const ok = tokens.every((t, i) => t === item.answerQ[i]);
-
-    if (ok){
-      questionRow.classList.add("okGlow");
-      questionRow.classList.remove("warnGlow");
-
-      score += 10;
-      scoreNum.textContent = String(score);
-
-      setToast("✅ Correct! Great job!");
-      cheer();
-      speak(item.speak);
-
-      setTimeout(() => {
-        nextItem();
-      }, 900);
-    } else {
-      questionRow.classList.add("warnGlow");
-      questionRow.classList.remove("okGlow");
-      setToast("❌ Not yet. 想想：is/are 在最前面，? 在最後");
-    }
-  }
-
-  // ---------- render item ----------
-  function renderItem(){
-    const item = ITEMS[idx];
-    itemNum.textContent = String(idx+1);
-    scoreNum.textContent = String(score);
-
-    // statement
-    clearEl(statementRow);
-    item.statement.forEach((w, i) => {
-      const box = document.createElement("div");
-      box.className = "slot" + (w === "." ? " punct" : "");
-      box.appendChild(makeStaticTile(w, COLORS[i % COLORS.length]));
-      statementRow.appendChild(box);
-    });
-
-    // question slots
-    clearEl(questionRow);
-    item.answerQ.forEach((tok, i) => {
-      questionRow.appendChild(makeSlot(i, tok === "?"));
-    });
-    questionRow.classList.remove("okGlow","warnGlow");
-
-    // bank tiles (shuffled, then scattered)
-    clearEl(bankArea);
-    const shuffled = shuffle(item.answerQ);
-    shuffled.forEach((w, i) => {
-      const tile = makeTile(w, COLORS[i % COLORS.length]);
-      bankArea.appendChild(tile);
-    });
-
-    // scatter after paint
-    setToast("把字卡拖到下面做疑問句（記得放 ?）");
-    requestAnimationFrame(randomScatter);
-  }
-
-  function nextItem(){
-    idx = (idx + 1) % ITEMS.length;
-    renderItem();
-  }
-
-  function restart(){
-    idx = 0;
-    score = 0;
-    renderItem();
-  }
-
-  // ---------- buttons ----------
-  startBtn.addEventListener("click", ()=>{
-    enabledAudio = true;
-    startBtn.disabled = true;
-    repeatBtn.disabled = false;
-    setToast("✅ Voice enabled. Let's start!");
-    speak("Let's start!");
-    renderItem();
-  });
-
-  repeatBtn.addEventListener("click", ()=>{
-    if (!enabledAudio) return;
-    speak(ITEMS[idx].speak);
-  });
-
-  resetBtn.addEventListener("click", ()=>{
-    restart();
-  });
-
-  // init without audio
-  renderItem();
-})();
-</script>
+  <footer>
+    © Momochi Learning Studio
+  </footer>
 </body>
 </html>
