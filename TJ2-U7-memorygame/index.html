@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="google" content="notranslate">
+  <title>Flip Match (Image × Word + Voice)</title>
+
+  <style>
+    :root{
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+      --board-max: 520px;
+      --gap: 10px;
+      --radius: 16px;
+
+      --shadow: 0 10px 22px rgba(0,0,0,.18);
+    }
+
+    *{ box-sizing: border-box; }
+    html, body{ height: 100%; }
+
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, "Noto Sans TC", sans-serif;
+
+      min-height: 100svh;
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+
+      background: url("assets/bg.png") center / cover no-repeat fixed;
+      overflow: hidden;
+
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    .app{
+      height: 100svh;
+      padding: 12px 14px calc(12px + var(--safe-bottom));
+      display: grid;
+      grid-template-rows: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      justify-items: center;
+    }
+
+    .board{
+      width: min(var(--board-max), 100%);
+      max-height: calc(100svh - 140px - var(--safe-top) - var(--safe-bottom));
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--gap);
+      align-content: center;
+      justify-items: center;
+    }
+
+    .card{
+      width: 100%;
+      aspect-ratio: 1 / 1;
+    }
+
+    .cardBtn{
+      width: 100%;
+      height: 100%;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      border-radius: var(--radius);
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    /* ✅ 超穩翻牌：不用 3D，直接切換顯示 */
+    .cardInner{
+      width: 100%;
+      height: 100%;
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .face{
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      transition: opacity 160ms ease;
+    }
+
+    /* 背面（預設顯示） */
+    .back{
+      opacity: 1;
+      background: #ffffff55;
+    }
+    .back img{
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display:block;
+    }
+
+    /* 正面（預設隱藏） */
+    .front{
+      opacity: 0;
+      background: rgba(255,255,255,.92);
+      box-shadow: inset 0 0 0 2px rgba(0,0,0,.06);
+    }
+
+    .front img{
+      width: 78%;
+      height: 78%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .word{
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 10px;
+      text-align: center;
+      font-weight: 900;
+      letter-spacing: 1px;
+      font-size: clamp(18px, 5vw, 34px);
+      text-transform: uppercase;
+      color: #111827;
+    }
+
+    /* 翻開：背面淡出、正面淡入 */
+    .flipped .back{ opacity: 0; pointer-events: none; }
+    .flipped .front{ opacity: 1; }
+
+    /* 已配對：保持翻開 + 稍微亮一點 */
+    .matched .cardInner{ filter: brightness(1.05); }
+    .matched .cardBtn{ cursor: default; }
+
+    /* 底部按鈕 */
+    .controls{
+      width: min(var(--board-max), 100%);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      align-items: center;
+      justify-items: center;
+    }
+
+    .imgBtn{
+      width: 100%;
+      max-width: 260px;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .imgBtn img{
+      width: 100%;
+      height: auto;
+      display:block;
+      filter: drop-shadow(var(--shadow));
+    }
+
+    .hint{
+      position: fixed;
+      left: 10px;
+      top: calc(10px + var(--safe-top));
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.75);
+      box-shadow: 0 6px 16px rgba(0,0,0,.12);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <div class="board" id="board" aria-label="Flip Board"></div>
+
+    <div class="controls">
+      <button class="imgBtn" id="startBtn" aria-label="Start">
+        <img src="assets/start.png" alt="Start">
+      </button>
+      <button class="imgBtn" id="resetBtn" aria-label="Reset">
+        <img src="assets/reset.png" alt="Reset">
+      </button>
+    </div>
+  </div>
+
+  <div class="hint" id="hint">先按 START 才能翻牌（語音需要）</div>
+
+  <script>
+    // ====== 配對資料：圖片 <-> 文字 ======
+    const PAIRS = [
+      { key: "clock",  img: "assets/clock.png",  word: "CLOCK" },
+      { key: "window", img: "assets/window.png", word: "WINDOW" },
+      { key: "one",    img: "assets/one.png",    word: "ONE" },
+      { key: "two",    img: "assets/two.png",    word: "TWO" },
+      { key: "three",  img: "assets/three.png",  word: "THREE" },
+      { key: "four",   img: "assets/four.png",   word: "FOUR" },
+    ];
+
+    const boardEl = document.getElementById("board");
+    const startBtn = document.getElementById("startBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const hintEl = document.getElementById("hint");
+
+    let deck = [];
+    let started = false;
+    let lock = false;     // 防連點
+    let open = [];        // 目前翻開但未配對（最多2張）
+
+    // ====== 語音：慢一點更清楚 ======
+    const VOICE_CFG = {
+      lang: "en-US",
+      rate: 0.82,
+      pitch: 1.02,
+      volume: 1.0,
+    };
+
+    function pickEnglishVoice() {
+      const vs = window.speechSynthesis?.getVoices?.() || [];
+      return vs.find(v => /en/i.test(v.lang)) || vs[0] || null;
+    }
+
+    function speak(text, { append = false } = {}) {
+      if (!window.speechSynthesis) return;
+      try {
+        if (!append) window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = VOICE_CFG.lang;
+        u.rate = VOICE_CFG.rate;
+        u.pitch = VOICE_CFG.pitch;
+        u.volume = VOICE_CFG.volume;
+        const v = pickEnglishVoice();
+        if (v) u.voice = v;
+        window.speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+
+    // 你要唸的單字（翻到圖片/文字都唸同一個）
+    const SAY = {
+      one: "one",
+      two: "two",
+      three: "three",
+      four: "four",
+      clock: "clock",
+      window: "window",
+    };
+
+    function speakCard(cardEl){
+      const key = (cardEl.dataset.key || "").toLowerCase();
+      const toSay = SAY[key] || key;
+      if (toSay) speak(toSay);
+    }
+
+    function speakMatchSuccess(key){
+      const w = (SAY[key] || key || "").toLowerCase();
+      speak(w, { append:false });
+      setTimeout(() => speak("Good job!", { append:true }), 80);
+    }
+
+    // ====== 洗牌 ======
+    function shuffle(arr){
+      for(let i = arr.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function buildDeck(){
+      const cards = [];
+      for(const p of PAIRS){
+        cards.push({ id: crypto.randomUUID(), key: p.key, kind: "img",  img: p.img,  word: p.word });
+        cards.push({ id: crypto.randomUUID(), key: p.key, kind: "word", img: p.img,  word: p.word });
+      }
+      return shuffle(cards);
+    }
+
+    function setHint(text){
+      hintEl.textContent = text;
+      hintEl.style.display = text ? "block" : "none";
+    }
+
+    // ====== 渲染 ======
+    function render(){
+      boardEl.innerHTML = "";
+      deck.forEach(card => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "card";
+        wrapper.dataset.id = card.id;
+        wrapper.dataset.key = card.key;
+        wrapper.dataset.kind = card.kind;
+
+        const btn = document.createElement("button");
+        btn.className = "cardBtn";
+        btn.type = "button";
+        btn.disabled = !started;
+
+        const inner = document.createElement("div");
+        inner.className = "cardInner";
+
+        const back = document.createElement("div");
+        back.className = "face back";
+        back.innerHTML = `<img src="assets/cardback.png" alt="back">`;
+
+        const front = document.createElement("div");
+        front.className = "face front";
+
+        if(card.kind === "img"){
+          front.innerHTML = `<img src="${card.img}" alt="${card.key}">`;
+        } else {
+          const w = document.createElement("div");
+          w.className = "word";
+          w.textContent = card.word;
+          front.appendChild(w);
+        }
+
+        inner.appendChild(back);
+        inner.appendChild(front);
+        btn.appendChild(inner);
+        wrapper.appendChild(btn);
+        boardEl.appendChild(wrapper);
+
+        btn.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          onFlip(wrapper);
+        });
+      });
+    }
+
+    // ====== 遊戲 ======
+    function resetGame({ keepStarted = false } = {}){
+      lock = false;
+      open = [];
+      started = keepStarted;
+
+      deck = buildDeck();
+      render();
+      setHint(started ? "" : "先按 START 才能翻牌（語音需要）");
+    }
+
+    function enableAllCards(enable){
+      document.querySelectorAll(".cardBtn").forEach(b => b.disabled = !enable);
+    }
+
+    function onStart(){
+      started = true;
+      setHint("");
+      resetGame({ keepStarted: true }); // 開始時洗牌
+      enableAllCards(true);
+    }
+
+    function onReset(){
+      resetGame({ keepStarted: true });
+      enableAllCards(true);
+      speak("Reset.", { append:false });
+    }
+
+    function isMatched(cardEl){ return cardEl.classList.contains("matched"); }
+    function isFlipped(cardEl){ return cardEl.classList.contains("flipped"); }
+
+    function flipOpen(cardEl){
+      cardEl.classList.add("flipped");
+      speakCard(cardEl); // ✅ 翻開就念單字
+    }
+
+    function flipClose(cardEl){
+      cardEl.classList.remove("flipped");
+    }
+
+    function markMatched(a, b){
+      a.classList.add("matched");
+      b.classList.add("matched");
+      // ✅ 配對成功：保留正面不動（所以不翻回去）
+      a.querySelector(".cardBtn").disabled = true;
+      b.querySelector(".cardBtn").disabled = true;
+    }
+
+    function onFlip(cardEl){
+      if(!started) return;
+      if(lock) return;
+      if(isMatched(cardEl)) return;
+      if(isFlipped(cardEl)) return;
+
+      flipOpen(cardEl);
+      open.push(cardEl);
+
+      if(open.length < 2) return;
+
+      lock = true;
+      const [a, b] = open;
+
+      const sameKey = a.dataset.key === b.dataset.key;
+      const differentKind = a.dataset.kind !== b.dataset.kind;
+
+      if(sameKey && differentKind){
+        markMatched(a, b);
+        open = [];
+
+        // ✅ 成功：再唸一次 + Good job!
+        speakMatchSuccess(a.dataset.key);
+
+        lock = false;
+        return;
+      }
+
+      // 失敗：翻回去
+      setTimeout(() => {
+        flipClose(a);
+        flipClose(b);
+        open = [];
+        lock = false;
+      }, 700);
+    }
+
+    startBtn.addEventListener("click", (e) => { e.preventDefault(); onStart(); });
+    resetBtn.addEventListener("click", (e) => { e.preventDefault(); onReset(); });
+
+    // 初始
+    resetGame({ keepStarted: false });
+  </script>
+</body>
+</html>
