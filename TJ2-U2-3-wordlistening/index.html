@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="google" content="notranslate">
+<title>Picture → Word (Pure Image)</title>
+
+<style>
+body{
+  margin:0;
+  font-family: system-ui, Arial, "Noto Sans TC", sans-serif;
+  background: linear-gradient(135deg,#ffe6f2,#f2f9ff);
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.wrap{
+  width:95%;
+  max-width:1000px;
+  background:#ffffffcc;
+  border-radius:24px;
+  padding:16px;
+  box-shadow:0 12px 30px rgba(0,0,0,.15);
+}
+
+h1{
+  text-align:center;
+  margin:6px 0 14px;
+}
+
+.game{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+}
+
+@media(max-width:800px){
+  .game{grid-template-columns:1fr;}
+}
+
+/* 圖片區 */
+.pics{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+}
+
+.pic{
+  background:#fff;
+  border-radius:18px;
+  box-shadow:0 8px 18px rgba(0,0,0,.12);
+  padding:10px;
+  cursor:pointer;
+  text-align:center;
+}
+
+.pic img{
+  width:100%;
+  height:100px;
+  object-fit:contain;
+}
+
+.pic.selected{
+  outline:4px solid #ff7eb9;
+}
+
+.pic.done{
+  opacity:.4;
+  pointer-events:none;
+}
+
+/* 單字區 */
+.words{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;
+}
+
+.word{
+  background:#fff;
+  border-radius:16px;
+  padding:14px;
+  font-size:20px;
+  font-weight:800;
+  text-align:center;
+  cursor:pointer;
+  box-shadow:0 8px 18px rgba(0,0,0,.12);
+}
+
+.word.correct{
+  background:#d7f5df;
+  pointer-events:none;
+}
+
+.word.wrong{
+  animation:shake .25s;
+}
+
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  25%{transform:translateX(-6px)}
+  50%{transform:translateX(6px)}
+  75%{transform:translateX(-4px)}
+}
+
+.info{
+  text-align:center;
+  margin-top:12px;
+  font-weight:700;
+}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+  <h1>Look 👀 and Choose the Word</h1>
+
+  <div class="game">
+    <div class="pics" id="pics"></div>
+    <div class="words" id="words"></div>
+  </div>
+
+  <div class="info" id="info">👉 點一張圖片，再點正確單字</div>
+</div>
+
+<script>
+/* ⭐ 單字清單（= 圖片檔名 .png） */
+const words = [
+  "ant","bee","bug","window","door","house",
+  "red","blue","yellow","star","heart"
+];
+
+let current = null;
+let solved = new Set();
+
+function shuffle(arr){
+  return [...arr].sort(()=>Math.random()-0.5);
+}
+
+function render(){
+  const picBox = document.getElementById("pics");
+  const wordBox = document.getElementById("words");
+  picBox.innerHTML = "";
+  wordBox.innerHTML = "";
+  solved.clear();
+  current = null;
+
+  shuffle(words).forEach(w=>{
+    const d = document.createElement("div");
+    d.className = "pic";
+    d.dataset.word = w;
+    d.innerHTML = `<img src="${w}.png">`;
+    d.onclick = ()=>{
+      document.querySelectorAll(".pic").forEach(p=>p.classList.remove("selected"));
+      d.classList.add("selected");
+      current = w;
+      speak(w);
+    };
+    picBox.appendChild(d);
+  });
+
+  shuffle(words).forEach(w=>{
+    const d = document.createElement("div");
+    d.className = "word";
+    d.textContent = w;
+    d.onclick = ()=>{
+      if(!current){
+        info("先點圖片喔～");
+        return;
+      }
+      if(w === current){
+        d.classList.add("correct");
+        document.querySelector(`.pic[data-word="${current}"]`).classList.add("done");
+        solved.add(w);
+        ding();
+        info("✔ Good job!");
+        current = null;
+        if(solved.size === words.length){
+          info("🎉 全部完成！3 秒後重玩");
+          setTimeout(render,3000);
+        }
+      }else{
+        d.classList.add("wrong");
+        setTimeout(()=>d.classList.remove("wrong"),250);
+        info("❌ 再想想");
+      }
+    };
+    wordBox.appendChild(d);
+  });
+}
+
+function info(t){
+  document.getElementById("info").textContent = t;
+}
+
+/* 🔊 簡單音效 */
+function ding(){
+  const ctx = new (window.AudioContext||window.webkitAudioContext)();
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.frequency.value = 880;
+  o.connect(g);
+  g.connect(ctx.destination);
+  o.start();
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.3);
+}
+
+/* 🗣 單字朗讀 */
+function speak(text){
+  if(!window.speechSynthesis) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US";
+  u.rate = 0.9;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+
+render();
+</script>
+</body>
+</html>
