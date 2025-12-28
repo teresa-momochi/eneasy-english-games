@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en" translate="no">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="google" content="notranslate">
+  <title>TJ2U8spell - Click Spelling</title>
+
+  <style>
+    :root{
+      --bg1:#ffe7ef;
+      --bg2:#e9f3ff;
+      --ink:#0f1b2d;
+      --muted:#65718a;
+      --card: rgba(255,255,255,.82);
+      --stroke: rgba(0,0,0,.08);
+      --shadow: 0 18px 45px rgba(0,0,0,.12);
+      --r: 22px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      color:var(--ink);
+      background:
+        radial-gradient(circle at 10% 15%, rgba(255,175,203,.35) 0 14px, transparent 15px 100px),
+        radial-gradient(circle at 30% 25%, rgba(255,220,120,.35) 0 10px, transparent 11px 90px),
+        radial-gradient(circle at 70% 18%, rgba(160,220,255,.35) 0 12px, transparent 13px 110px),
+        radial-gradient(circle at 86% 30%, rgba(255,175,203,.25) 0 14px, transparent 15px 120px),
+        linear-gradient(180deg, var(--bg2), var(--bg1));
+      min-height:100vh;
+      padding:22px;
+    }
+    .wrap{max-width:1100px;margin:0 auto}
+    .top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    h1{margin:0;font-size:44px}
+    .tag{
+      display:inline-block;
+      font-size:16px;
+      padding:6px 10px;
+      border-radius:999px;
+      background:#3b7cff;
+      color:white;
+      margin-left:6px;
+      vertical-align:middle;
+    }
+    .hud{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .pill{
+      background:rgba(255,255,255,.8);
+      border:1px solid var(--stroke);
+      border-radius:999px;
+      padding:10px 14px;
+      box-shadow: 0 8px 20px rgba(0,0,0,.06);
+      font-weight:700;
+    }
+    .btn{
+      border:0;
+      border-radius:14px;
+      padding:12px 16px;
+      background:#3b7cff;
+      color:white;
+      font-weight:800;
+      cursor:pointer;
+      box-shadow: 0 10px 24px rgba(59,124,255,.25);
+    }
+    .btn.secondary{
+      background:rgba(255,255,255,.9);
+      color:var(--ink);
+      border:1px solid var(--stroke);
+      box-shadow: 0 10px 24px rgba(0,0,0,.08);
+    }
+    .btn:active{transform:translateY(1px)}
+
+    .panel{
+      margin-top:16px;
+      border-radius: var(--r);
+      background: var(--card);
+      border:1px solid var(--stroke);
+      box-shadow: var(--shadow);
+      padding:18px;
+      overflow:hidden;
+    }
+    .row{display:grid;grid-template-columns: 1.15fr .85fr;gap:18px;align-items:start}
+    @media(max-width: 980px){ .row{grid-template-columns:1fr} h1{font-size:36px} }
+
+    .imgBox{
+      border-radius: 18px;
+      border: 2px dashed rgba(59,124,255,.28);
+      background: rgba(255,255,255,.65);
+      padding:14px;
+      min-height:420px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+      overflow:hidden;
+    }
+
+    /* ✅ 圖片放大：不擋右邊框框（安全放大版） */
+    .imgInner{
+      width:100%;
+      max-width: 700px;   /* ← 圖片區變大 */
+      aspect-ratio: 4 / 3;
+      border-radius:18px;
+      background: radial-gradient(circle at 30% 20%, rgba(255,175,203,.35), transparent 60%),
+                  radial-gradient(circle at 80% 70%, rgba(160,220,255,.35), transparent 60%),
+                  rgba(255,255,255,.8);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:8px;        /* ← 留白更小，圖更大 */
+    }
+    .imgInner img{
+      max-width:100%;
+      max-height:100%;
+      object-fit:contain;
+      user-select:none;
+      pointer-events:none;
+      filter: drop-shadow(0 18px 24px rgba(0,0,0,.12));
+    }
+
+    .right h2{margin:0 0 4px 0;font-size:30px}
+    .hint{
+      margin:10px 0 14px 0;
+      color:var(--muted);
+      font-weight:800;
+      line-height:1.45;
+    }
+
+    .slotsWrap{
+      border-radius: 16px;
+      border:1px solid rgba(0,0,0,.06);
+      background: rgba(255,255,255,.72);
+      padding:14px;
+    }
+    .slots{display:flex;gap:12px;flex-wrap:wrap}
+    .slot{
+      width:74px;height:74px;
+      border-radius: 16px;
+      border:2px dashed rgba(59,124,255,.35);
+      background: rgba(255,255,255,.85);
+      display:flex;align-items:center;justify-content:center;
+      font-size:32px;font-weight:900;text-transform:lowercase;
+      user-select:none;
+    }
+    .slot.filled{
+      border-style:solid;
+      border-color: rgba(59,124,255,.25);
+      box-shadow: 0 10px 22px rgba(0,0,0,.08);
+    }
+
+    .tiles{
+      margin-top:14px;
+      display:flex;gap:12px;flex-wrap:wrap;
+      padding:14px;
+      border-radius: 16px;
+      border:1px solid rgba(0,0,0,.06);
+      background: rgba(255,255,255,.72);
+      min-height:96px;
+      align-items:center;
+    }
+    .tile{
+      width:74px;height:74px;
+      border-radius: 16px;
+      background: #ffe07a;
+      display:flex;align-items:center;justify-content:center;
+      font-size:32px;font-weight:900;
+      user-select:none;
+      cursor:pointer;
+      box-shadow: 0 12px 26px rgba(0,0,0,.12);
+      border: 1px solid rgba(0,0,0,.06);
+    }
+    .tile:active{transform:translateY(1px)}
+
+    .status{
+      margin-top:14px;
+      padding:14px 16px;
+      border-radius: 16px;
+      border:1px solid rgba(0,0,0,.06);
+      background: rgba(255,255,255,.75);
+      display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;
+      font-weight:900;font-size:22px;
+    }
+    .status .small{font-size:16px;color:var(--muted);font-weight:800}
+
+    .overlay{
+      position:fixed;inset:0;
+      background: rgba(15,27,45,.45);
+      display:none;align-items:center;justify-content:center;
+      padding:18px;z-index:50;
+    }
+    .overlay.show{display:flex}
+    .modal{
+      width:min(520px, 92vw);
+      background: rgba(255,255,255,.92);
+      border:1px solid rgba(0,0,0,.08);
+      border-radius: 22px;
+      box-shadow: 0 25px 60px rgba(0,0,0,.25);
+      padding:18px;text-align:center;
+    }
+    .bigReplay{
+      width:100%;
+      border:0;border-radius: 18px;
+      padding:14px 16px;
+      background:#3b7cff;color:white;
+      font-weight:900;font-size:18px;
+      cursor:pointer;
+      box-shadow: 0 14px 32px rgba(59,124,255,.28);
+    }
+
+    /* ❌ 錯誤：紅色抖一下（震動不支援時也有視覺提示） */
+    .panel.wrong{ animation: wrongShake .28s ease; }
+    @keyframes wrongShake{
+      0%{ transform: translateX(0); }
+      25%{ transform: translateX(-6px); }
+      50%{ transform: translateX(6px); }
+      75%{ transform: translateX(-4px); }
+      100%{ transform: translateX(0); }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="top">
+      <h1>🧩 TJ2U8 spell <span class="tag">click</span></h1>
+
+      <div class="hud">
+        <div class="pill">⏱ time: <span id="time">0.0</span>s</div>
+        <div class="pill">✅ <span id="score">0</span>/<span id="total">0</span></div>
+        <button class="btn secondary" id="speakBtn">🔊 say word</button>
+        <button class="btn" id="restartBtn">🔁 換單字</button>
+      </div>
+    </div>
+
+    <div class="panel" id="panel">
+      <div class="row">
+        <div class="imgBox">
+          <div class="imgInner">
+            <img id="pic" src="" alt="">
+          </div>
+        </div>
+
+        <div class="right">
+          <h2>tap the letters to spell:</h2>
+          <p class="hint">✅ letter sound on tap ｜ ✅ say word when finished ｜ ❌ wrong letters don’t go in</p>
+
+          <div class="slotsWrap">
+            <div class="slots" id="slots"></div>
+          </div>
+
+          <div class="tiles" id="tiles"></div>
+
+          <div class="status" id="status">
+            <span>ready!</span>
+            <span class="small">（tap letters）</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2>🎉 you did it!</h2>
+      <p id="finalText">nice!</p>
+      <button class="bigReplay" id="bigReplay">🔁 換單字</button>
+    </div>
+  </div>
+
+<script>
+  // ✅ TJ2U8 單字 + 圖片檔名（已完全對齊你的 images 資料夾）
+  const items = [
+    { word: "black", img: "images/black.png" },
+    { word: "white", img: "images/white.png" },
+    { word: "dog",   img: "images/dog.png" },
+    { word: "cat",   img: "images/cat.png" },
+    { word: "man",   img: "images/man.png" },
+    { word: "map",   img: "images/map.png" },
+    { word: "mad",   img: "images/mad.png" },
+    { word: "mom",   img: "images/mom.png" },
+    { word: "gum",   img: "images/gum.png" },
+    { word: "yam",   img: "images/yam.png" },
+  ];
+
+  const $ = (id) => document.getElementById(id);
+
+  function speak(text){
+    try{
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "en-US";
+      speechSynthesis.speak(u);
+    }catch(e){}
+  }
+  function speakLetter(ch){ speak(ch); }
+
+  function shuffle(arr){
+    arr = arr.slice();
+    for(let i = arr.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  // ✅ 錯誤音效：放在 sounds/oops.mp3
+  const oopsAudio = new Audio("sounds/oops.mp3");
+
+  function flashWrong(){
+    const panel = $("panel");
+    if(!panel) return;
+    panel.classList.remove("wrong");
+    void panel.offsetWidth;
+    panel.classList.add("wrong");
+  }
+
+  // ❌ 點錯：能震就震；不能震 → 播放喔喔 + 紅色抖動
+  function errorFeedback(){
+    let ok = false;
+    try{
+      if(navigator.vibrate){
+        ok = navigator.vibrate(120) === true;
+      }
+    }catch(e){}
+    if(!ok){
+      try{
+        oopsAudio.currentTime = 0;
+        oopsAudio.play().catch(()=>{});
+      }catch(e){}
+    }
+    flashWrong();
+  }
+
+  let order = [];
+  let idx = 0;
+  let score = 0;
+  let startMs = 0;
+  let timerHandle = null;
+  let currentPos = 0;
+
+  const pic = $("pic");
+  const slotsEl = $("slots");
+  const tilesEl = $("tiles");
+  const statusEl = $("status");
+  const timeEl = $("time");
+  const scoreEl = $("score");
+  const totalEl = $("total");
+  const overlay = $("overlay");
+  const finalText = $("finalText");
+
+  function setStatus(main, sub){
+    statusEl.innerHTML = `<span>${main}</span><span class="small">${sub||""}</span>`;
+  }
+
+  function startTimer(){
+    if(timerHandle) return;
+    startMs = performance.now();
+    timerHandle = setInterval(()=>{
+      const t = (performance.now()-startMs)/1000;
+      timeEl.textContent = t.toFixed(1);
+    }, 100);
+  }
+  function stopTimer(){
+    if(timerHandle){
+      clearInterval(timerHandle);
+      timerHandle = null;
+    }
+  }
+
+  function buildSlots(target){
+    slotsEl.innerHTML = "";
+    for(let i=0;i<target.length;i++){
+      const s = document.createElement("div");
+      s.className = "slot";
+      s.textContent = "";
+      slotsEl.appendChild(s);
+    }
+  }
+
+  function buildTiles(target){
+    tilesEl.innerHTML = "";
+    const letters = shuffle(target.split(""));
+    letters.forEach((ch)=>{
+      const t = document.createElement("div");
+      t.className = "tile";
+      t.textContent = ch.toLowerCase();
+      t.addEventListener("click", ()=>{
+        startTimer();
+        speakLetter(t.textContent);
+        handleTileClick(ch.toLowerCase(), t);
+      });
+      tilesEl.appendChild(t);
+    });
+  }
+
+  function handleTileClick(ch, tileEl){
+    const item = order[idx];
+    const target = item.word.toLowerCase();
+    if(currentPos >= target.length) return;
+
+    const expected = target[currentPos];
+
+    // ❌ 點錯：不進答案框
+    if(ch !== expected){
+      setStatus("oops!", "（wrong letter）");
+      errorFeedback();
+      return;
+    }
+
+    // ✅ 點對：放進下一格
+    const slot = slotsEl.children[currentPos];
+    slot.textContent = ch;
+    slot.classList.add("filled");
+    tileEl.remove();
+    currentPos++;
+
+    setStatus("good!", "（keep going）");
+
+    if(currentPos >= target.length){
+      onWordComplete();
+    }
+  }
+
+  function onWordComplete(){
+    const item = order[idx];
+    score++;
+    scoreEl.textContent = String(score);
+
+    // ✅ 完成唸單字
+    speak(item.word);
+    setStatus("great!", "（finished）");
+
+    setTimeout(()=>{
+      idx++;
+      if(idx >= order.length){
+        finishGame();
+      }else{
+        loadRound();
+      }
+    }, 500);
+  }
+
+  function loadRound(){
+    const item = order[idx];
+    const target = item.word;
+
+    pic.src = item.img;
+    pic.alt = target;
+
+    currentPos = 0;
+    buildSlots(target);
+    buildTiles(target);
+
+    setStatus("spell it!", "（tap the letters）");
+    speak(target);
+  }
+
+  function showOverlay(){ overlay.classList.add("show"); }
+  function hideOverlay(){ overlay.classList.remove("show"); }
+
+  function finishGame(){
+    stopTimer();
+    finalText.textContent = `Nice! ${score}/${order.length} ✅`;
+    showOverlay();
+  }
+
+  $("speakBtn").addEventListener("click", ()=>{
+    startTimer();
+    speak(order[idx].word);
+    setStatus("listen!", "（say word）");
+  });
+
+  // 「換單字」＝直接跳下一題；最後一題後重新洗牌
+  $("restartBtn").addEventListener("click", ()=>{
+    startTimer();
+    idx++;
+    if(idx >= order.length){
+      order = shuffle(items);
+      idx = 0;
+      score = 0;
+      scoreEl.textContent = "0";
+      timeEl.textContent = "0.0";
+      stopTimer();
+      timerHandle = null;
+    }
+    loadRound();
+  });
+
+  $("bigReplay").addEventListener("click", ()=>{
+    hideOverlay();
+    order = shuffle(items);
+    idx = 0;
+    score = 0;
+    scoreEl.textContent = "0";
+    timeEl.textContent = "0.0";
+    stopTimer();
+    timerHandle = null;
+    loadRound();
+  });
+
+  // init
+  order = shuffle(items);
+  totalEl.textContent = String(items.length);
+  scoreEl.textContent = "0";
+  loadRound();
+</script>
+</body>
+</html>
