@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="google" content="notranslate">
+<title>Click Spelling Template</title>
+
+<style>
+  :root{
+    --bg1:#ffeef2;
+    --bg2:#e9f6ff;
+    --ink:#13233a;
+    --muted:#54657a;
+    --blue:#4f7cff;
+    --card:#ffffff;
+    --dash:#b6ccff;
+    --yellow:#ffe07a;
+    --radius:26px;
+  }
+
+  body{
+    margin:0;
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    color:var(--ink);
+    background: linear-gradient(135deg,var(--bg1),var(--bg2));
+  }
+
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    padding:18px 22px;
+  }
+  .titleRow{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  h1{margin:0;font-size:34px;letter-spacing:.2px;}
+  .badge{
+    background:var(--blue);
+    color:white;
+    padding:6px 14px;
+    border-radius:999px;
+    font-size:15px;
+    font-weight:700;
+  }
+
+  .hud{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+  }
+  .pill{
+    background: rgba(255,255,255,.85);
+    border:1px solid rgba(0,0,0,.06);
+    border-radius:999px;
+    padding:10px 14px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    box-shadow: 0 10px 22px rgba(0,0,0,.06);
+    font-weight:800;
+  }
+  .pill span.small{color:var(--muted); font-weight:800}
+
+  .controls{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+  }
+  button{
+    border:none;
+    border-radius:16px;
+    padding:10px 14px;
+    font-size:16px;
+    font-weight:900;
+    cursor:pointer;
+  }
+  .primary{background:var(--blue);color:white;}
+  .secondary{background:white;color:var(--ink);}
+  button:active{transform:translateY(1px);}
+
+  main{
+    display:grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap:18px;
+    padding:0 22px 22px;
+  }
+  .card{
+    background: rgba(255,255,255,.88);
+    border:1px solid rgba(0,0,0,.06);
+    border-radius: var(--radius);
+    box-shadow: 0 14px 36px rgba(0,0,0,.08);
+    padding:18px;
+  }
+
+  .image-box{
+    height:420px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border:3px dashed var(--dash);
+    border-radius:22px;
+    background: linear-gradient(135deg,#ffeef2,#e9f6ff);
+    overflow:hidden;
+  }
+  .image-box img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    display:block;
+  }
+
+  .subtitle{
+    margin:0 0 6px;
+    font-size:34px;
+    letter-spacing:.2px;
+  }
+  .hint{
+    margin:0 0 14px;
+    color:var(--muted);
+    font-weight:800;
+    line-height:1.4;
+  }
+
+  .slots{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    padding:14px;
+    border-radius:20px;
+    background: rgba(255,255,255,.75);
+    border:1px solid rgba(0,0,0,.06);
+    margin-bottom:14px;
+  }
+  .slot{
+    width:66px;
+    height:66px;
+    border:3px dashed var(--dash);
+    border-radius:18px;
+    font-size:36px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: rgba(255,255,255,.7);
+    font-weight:900;
+  }
+
+  .letters{
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    padding:14px;
+    border-radius:20px;
+    background: rgba(255,255,255,.75);
+    border:1px solid rgba(0,0,0,.06);
+  }
+  .letter{
+    width:74px;
+    height:74px;
+    background: var(--yellow);
+    border-radius:20px;
+    font-size:34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    user-select:none;
+    font-weight:900;
+    box-shadow: 0 10px 20px rgba(0,0,0,.10);
+  }
+  .letter.used{
+    opacity:.28;
+    pointer-events:none;
+    transform:scale(.98);
+    box-shadow:none;
+  }
+
+  .footerNote{
+    margin-top:12px;
+    color:var(--muted);
+    font-weight:800;
+    font-size:16px;
+  }
+
+  .flash{ animation:flash .22s alternate 2; }
+  @keyframes flash{ from{filter:none;} to{filter:saturate(1.2) contrast(1.05);} }
+  .shake{ animation:shake .25s ease-in-out 1; }
+  @keyframes shake{
+    0%{transform:translateX(0)}
+    25%{transform:translateX(-6px)}
+    50%{transform:translateX(6px)}
+    75%{transform:translateX(-4px)}
+    100%{transform:translateX(0)}
+  }
+
+  @media (max-width: 900px){
+    header{padding:14px 14px;}
+    h1{font-size:28px;}
+    .subtitle{font-size:28px;}
+    main{
+      grid-template-columns: 1fr;
+      padding:0 14px 14px;
+    }
+    .image-box{height:320px;}
+    .slot{width:58px;height:58px;font-size:32px;}
+    .letter{width:70px;height:70px;font-size:32px;}
+  }
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="titleRow">
+    <h1>🧩 <span id="gameTitle">TJ2U6 spell</span></h1>
+    <span class="badge">click</span>
+  </div>
+
+  <div class="hud">
+    <div class="pill" title="Timer">
+      ⏱ <span class="small">time:</span> <span id="timeText">0.0s</span>
+    </div>
+    <div class="pill" title="Progress">
+      ✅ <span id="progressText">0/10</span>
+    </div>
+    <div class="controls">
+      <button class="secondary" id="sayBtn">🔊 say word</button>
+      <button class="primary" id="nextBtn">🔁 換單字</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="card" id="leftCard">
+    <div class="image-box">
+      <img id="wordImage" src="" alt="">
+    </div>
+    <!-- ✅ 你圈起來的中文：已完全移除，不會出現在畫面上 -->
+  </div>
+
+  <div class="card" id="rightCard">
+    <h2 class="subtitle">tap the letters to spell:</h2>
+    <p class="hint">✅ letter sound on tap ｜ ✅ say word when finished ｜ ❌ wrong letters don’t go in</p>
+
+    <div class="slots" id="slots"></div>
+    <div class="letters" id="letters"></div>
+
+    <div class="footerNote">spell it!（tap the letters）</div>
+  </div>
+</main>
+
+<audio id="oops" src="sounds/oops.mp3" preload="auto"></audio>
+
+<script>
+/* =========================================================
+   🧠【模板母檔】你只要改這一區就能做新的一課
+   （圖片建議：800×800 且白邊裁掉 → 視覺最一致，但不顯示在畫面）
+   ========================================================= */
+const GAME_TITLE = "TJ2U6 spell";
+const WORDS = ["book","chair","desk","inky","inn","jam","jar","jet","king","pencil"];
+const IMAGE_EXT = "png";
+const OOPS_SOUND_PATH = "sounds/oops.mp3";
+
+// ✅ 拼完自動換下一個字：延遲幾毫秒（讓孩子有完成感）
+const AUTO_NEXT_DELAY_MS = 900;
+
+// ✅ 點到字母要念出來：true/false
+const SPEAK_LETTER_ON_TAP = true;
+/* ========================================================= */
+
+document.getElementById("gameTitle").textContent = GAME_TITLE;
+document.title = `${GAME_TITLE} - Click Spelling`;
+
+// UI refs
+const slotsEl = document.getElementById("slots");
+const lettersEl = document.getElementById("letters");
+const imgEl = document.getElementById("wordImage");
+const timeText = document.getElementById("timeText");
+const progressText = document.getElementById("progressText");
+const rightCard = document.getElementById("rightCard");
+const oopsAudio = document.getElementById("oops");
+
+// audio src
+oopsAudio.src = OOPS_SOUND_PATH;
+
+let currentWord = "";
+let cursor = 0;
+
+// progress
+const targetTotal = WORDS.length;
+let solvedSet = new Set();
+
+// timer
+let t0 = 0;
+let rafId = null;
+let running = false;
+
+// 防止「拼完自動換字」時，還能繼續點造成亂掉
+let locked = false;
+
+function shuffle(arr){
+  const a = arr.slice();
+  for (let i=a.length-1; i>0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startTimer(){
+  stopTimer();
+  running = true;
+  t0 = performance.now();
+  const tick = () => {
+    if(!running) return;
+    const s = (performance.now() - t0) / 1000;
+    timeText.textContent = `${s.toFixed(1)}s`;
+    rafId = requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+function stopTimer(){
+  running = false;
+  if(rafId) cancelAnimationFrame(rafId);
+  rafId = null;
+}
+
+function setProgressText(){
+  progressText.textContent = `${solvedSet.size}/${targetTotal}`;
+}
+
+function speak(text, lang="en-US"){
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang;
+  speechSynthesis.speak(u);
+}
+
+function sayWord(){
+  speak(currentWord);
+}
+
+function speakLetter(letter){
+  // 用小寫讓它不要唸「大寫J」那種怪腔
+  speak(letter.toLowerCase());
+}
+
+function playOops(){
+  try{
+    oopsAudio.currentTime = 0;
+    oopsAudio.play();
+  }catch(e){}
+}
+
+function wrongFeedback(){
+  if(navigator.vibrate) navigator.vibrate(120);
+  playOops();
+  rightCard.classList.remove("flash","shake");
+  void rightCard.offsetWidth;
+  rightCard.classList.add("flash","shake");
+}
+
+function buildSlots(word){
+  slotsEl.innerHTML = "";
+  [...word].forEach(() => {
+    const d = document.createElement("div");
+    d.className = "slot";
+    slotsEl.appendChild(d);
+  });
+}
+
+function buildLetters(word){
+  lettersEl.innerHTML = "";
+  const letters = shuffle([...word]);
+  letters.forEach(ch => {
+    const b = document.createElement("div");
+    b.className = "letter";
+    b.textContent = ch;
+    b.addEventListener("click", () => tapLetter(b, ch));
+    lettersEl.appendChild(b);
+  });
+}
+
+function loadWord(newWord){
+  locked = false;
+  currentWord = newWord;
+  cursor = 0;
+
+  imgEl.src = `images/${currentWord}.${IMAGE_EXT}`;
+  imgEl.alt = currentWord;
+
+  buildSlots(currentWord);
+  buildLetters(currentWord);
+
+  timeText.textContent = "0.0s";
+  startTimer();
+}
+
+function pickNextWord(){
+  const remaining = WORDS.filter(w => !solvedSet.has(w));
+  if(remaining.length > 0){
+    return remaining[Math.floor(Math.random() * remaining.length)];
+  }
+  return WORDS[Math.floor(Math.random() * WORDS.length)];
+}
+
+function nextWord(){
+  loadWord(pickNextWord());
+}
+
+function tapLetter(btn, letter){
+  if(locked) return;
+
+  if(SPEAK_LETTER_ON_TAP){
+    // ✅ 點到字母會念出來
+    speakLetter(letter);
+  }
+
+  const expected = currentWord[cursor];
+  if(letter === expected){
+    slotsEl.children[cursor].textContent = letter;
+    btn.classList.add("used");
+    cursor++;
+
+    if(cursor === currentWord.length){
+      locked = true;
+      stopTimer();
+
+      // ✅ 拼完念單字
+      sayWord();
+
+      // ✅ 完成數（只算第一次完成）
+      if(!solvedSet.has(currentWord)){
+        solvedSet.add(currentWord);
+        setProgressText();
+      }
+
+      // ✅ 自動換下一個字
+      setTimeout(() => {
+        nextWord();
+      }, AUTO_NEXT_DELAY_MS);
+    }
+  }else{
+    wrongFeedback();
+  }
+}
+
+// Buttons
+document.getElementById("sayBtn").addEventListener("click", sayWord);
+document.getElementById("nextBtn").addEventListener("click", nextWord);
+
+// init
+setProgressText();
+nextWord();
+</script>
+
+</body>
+</html>
