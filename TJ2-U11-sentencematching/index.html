@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="google" content="notranslate">
+<meta name="googlebot" content="notranslate">
+<title>Rainbow Spinner Sentence Game</title>
+
+<style>
+  :root{
+    --bg:#fff8f4;
+    --panel:#ffffff;
+    --ink:#1f1f1f;
+
+    /* Milk pastel cards */
+    --milkPink:#ffe6ef;
+    --milkYellow:#fff3d6;
+    --milkBlue:#e7f2ff;
+    --milkPeach:#ffe9df;
+
+    --shadow:0 12px 28px rgba(0,0,0,.10);
+    --radius:24px;
+
+    /* Big TV font */
+    --qFont:46px;
+    --ansFont:42px;
+
+    --wordFont:30px;
+    --wordPadY:14px;
+    --wordPadX:20px;
+
+    --wheelSize:480px;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background: radial-gradient(1200px 700px at 30% 10%, #ffffff 0%, var(--bg) 65%, #fff 100%);
+    color:var(--ink);
+  }
+
+  .wrap{
+    height:100vh;
+    display:grid;
+    grid-template-columns: 1fr 1.25fr;
+    gap:18px;
+    padding:18px;
+    align-items:center;
+  }
+
+  /* LEFT */
+  .left{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-width:560px;
+  }
+
+  .wheelStage{
+    position:relative;
+    width:var(--wheelSize);
+    height:var(--wheelSize);
+  }
+
+  /* Pointer dot (your chosen style) */
+  .dotPointer{
+    position:absolute;
+    left:50%;
+    top:-22px;
+    transform:translateX(-50%);
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    background:#111;
+    border:6px solid rgba(255,255,255,.95);
+    box-shadow:0 12px 20px rgba(0,0,0,.25);
+    z-index:8;
+  }
+  .dotPointer::after{
+    content:"";
+    position:absolute;
+    left:50%;
+    top:34px;
+    transform:translateX(-50%);
+    width:18px;
+    height:10px;
+    border-radius:10px;
+    background:rgba(0,0,0,.22);
+    filter:blur(0.6px);
+  }
+
+  .wheel{
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+    border:10px solid rgba(255,255,255,.92);
+    transform:rotate(0deg);
+    transition:transform 3.1s cubic-bezier(.10,.95,.15,1);
+    background:conic-gradient(
+      #ff3b30 0deg 51.428deg,
+      #ff9500 51.428deg 102.856deg,
+      #ffcc00 102.856deg 154.284deg,
+      #34c759 154.284deg 205.712deg,
+      #007aff 205.712deg 257.14deg,
+      #5856d6 257.14deg 308.568deg,
+      #af52de 308.568deg 360deg
+    );
+  }
+
+  .wheel .icon{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:94px;
+    height:94px;
+    border-radius:20px;
+    background:rgba(255,255,255,.94);
+    box-shadow:0 10px 18px rgba(0,0,0,.12);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transform:translate(-50%,-50%);
+  }
+  .wheel .icon img{
+    width:84px;
+    height:84px;
+    object-fit:contain;
+    user-select:none;
+    pointer-events:none;
+  }
+
+  /* Center SPIN button */
+  .spinBtn{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    width:150px;
+    height:150px;
+    border-radius:50%;
+    border:10px solid rgba(255,255,255,.90);
+    background:radial-gradient(circle at 30% 30%, #fff, #f0f0f0);
+    box-shadow:0 18px 30px rgba(0,0,0,.22);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:9;
+    user-select:none;
+  }
+  .spinBtn span{
+    font-size:38px;
+    font-weight:1000;
+    letter-spacing:1px;
+    color:rgba(50,30,20,.70);
+  }
+  .spinBtn.disabled{
+    opacity:.55;
+    cursor:not-allowed;
+    pointer-events:none;
+  }
+
+  .status{
+    position:absolute;
+    left:50%;
+    bottom:-58px;
+    transform:translateX(-50%);
+    font-size:22px;
+    font-weight:900;
+    opacity:.9;
+  }
+
+  /* RIGHT */
+  .right{
+    background:var(--panel);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:22px 22px 18px;
+    min-width:620px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+
+  .bubbleQ{
+    background:#f1f5ff;
+    border:2px solid rgba(0,0,0,.06);
+    border-radius:20px;
+    padding:18px;
+    font-size:var(--qFont);
+    font-weight:1000;
+    line-height:1.15;
+  }
+
+  .bubbleA{
+    background:#fff;
+    border:2px dashed rgba(0,0,0,.20);
+    border-radius:20px;
+    padding:18px;
+    min-height:88px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+
+  .answerText{
+    font-size:var(--ansFont);
+    font-weight:1000;
+    letter-spacing:.2px;
+  }
+  .placeholder{
+    opacity:.35;
+    font-size:28px;
+    font-weight:900;
+  }
+
+  .row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+
+  .msg{
+    font-size:20px;
+    font-weight:900;
+    min-height:28px;
+    color:rgba(0,0,0,.65);
+  }
+
+  .btn{
+    font-size:18px;
+    font-weight:1000;
+    padding:10px 14px;
+    border-radius:14px;
+    border:0;
+    cursor:pointer;
+    box-shadow:0 8px 16px rgba(0,0,0,.08);
+    background:#f3f3f3;
+  }
+  .btn:active{ transform:translateY(1px); }
+  .btn.disabled{ opacity:.5; pointer-events:none; }
+
+  .cards{
+    margin-top:6px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+
+  .wordCard{
+    font-size:var(--wordFont);
+    font-weight:1000;
+    padding:var(--wordPadY) var(--wordPadX);
+    border-radius:16px;
+    border:2px solid rgba(0,0,0,.10);
+    cursor:pointer;
+    user-select:none;
+    box-shadow:0 10px 18px rgba(0,0,0,.08);
+    transition:transform .12s, filter .12s, opacity .12s;
+  }
+  .wordCard:hover{ transform:translateY(-1px); filter:brightness(1.03); }
+  .wordCard.used{ opacity:.35; cursor:not-allowed; transform:none; }
+
+  .milk1{ background:var(--milkPink); }
+  .milk2{ background:var(--milkYellow); }
+  .milk3{ background:var(--milkBlue); }
+  .milk4{ background:var(--milkPeach); }
+
+  .wordCard.dot{
+    background:#111 !important;
+    color:#fff;
+    border-color:#111;
+    font-size:34px;
+    padding:12px 22px;
+  }
+
+  .done{
+    height:100vh;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:16px;
+    text-align:center;
+  }
+  .done h1{ margin:0; font-size:56px; }
+  .done p{ margin:0; font-size:22px; opacity:.85; }
+  .restart{
+    font-size:36px;
+    font-weight:1000;
+    padding:18px 46px;
+    border-radius:18px;
+    border:0;
+    cursor:pointer;
+    box-shadow:var(--shadow);
+  }
+
+  @media (max-width:1200px){
+    :root{ --wheelSize:410px; --qFont:40px; --ansFont:36px; --wordFont:26px; }
+    .left{ min-width:500px; }
+    .right{ min-width:560px; }
+  }
+</style>
+</head>
+
+<body>
+
+<div id="game" class="wrap">
+  <div class="left">
+    <div class="wheelStage">
+      <div class="dotPointer" aria-hidden="true"></div>
+      <div id="wheel" class="wheel"></div>
+      <div id="spinBtn" class="spinBtn" role="button" aria-label="Spin"><span>SPIN</span></div>
+      <div id="status" class="status">Round: 0 / 7</div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div id="qBubble" class="bubbleQ">Click SPIN!</div>
+
+    <div class="bubbleA">
+      <div id="answerLine" class="answerText"></div>
+      <div id="placeholder" class="placeholder">Wait for the question…</div>
+    </div>
+
+    <div class="row">
+      <div id="msg" class="msg">Tap SPIN to start.</div>
+      <button id="clearBtn" class="btn disabled" type="button">Clear</button>
+    </div>
+
+    <div id="cards" class="cards"></div>
+  </div>
+</div>
+
+<div id="done" class="done">
+  <h1>🎉 Great Job!</h1>
+  <p>You finished 7 rounds.</p>
+  <button id="restartBtn" class="restart" type="button">🔁 Restart</button>
+</div>
+
+<!-- Sound -->
+<audio id="ding" src="sounds/ding.mp3" preload="auto"></audio>
+
+<script>
+/* =========================
+   DATA
+========================= */
+const ITEMS = [
+  { key:"father", type:"he",  img:"images/father.png" },
+  { key:"mother", type:"she", img:"images/mother.png" },
+  { key:"ox",     type:"it",  img:"images/ox.png"     },
+  { key:"pig",    type:"it",  img:"images/pig.png"    },
+  { key:"pond",   type:"it",  img:"images/pond.png"   },
+  { key:"pen",    type:"it",  img:"images/pen.png"    },
+  { key:"box",    type:"it",  img:"images/box.png"    },
+];
+
+const DOT = "●";
+const SEG_COUNT = 7;
+const SEG_DEG = 360 / SEG_COUNT;
+const NOUN_POOL = ITEMS.map(x=>x.key); // distractors only from these nouns
+
+/* =========================
+   UI
+========================= */
+const wheelEl = document.getElementById("wheel");
+const spinBtn = document.getElementById("spinBtn");
+const qBubble = document.getElementById("qBubble");
+const answerLine = document.getElementById("answerLine");
+const placeholder = document.getElementById("placeholder");
+const cardsEl = document.getElementById("cards");
+const msgEl = document.getElementById("msg");
+const statusEl = document.getElementById("status");
+const clearBtn = document.getElementById("clearBtn");
+const doneEl = document.getElementById("done");
+const gameEl = document.getElementById("game");
+const restartBtn = document.getElementById("restartBtn");
+const dingEl = document.getElementById("ding");
+
+/* =========================
+   STATE
+========================= */
+let absoluteRotation = 0;     // critical: always accumulate
+let remainingKeys = [];
+let currentTarget = null;
+let locked = false;          // locks clicking
+let builtTokens = [];
+let allowAnswer = false;     // enable after question spoken
+let audioUnlocked = false;
+
+const milkClasses = ["milk1","milk2","milk3","milk4"];
+
+/* =========================
+   Helpers
+========================= */
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function setMsg(text){
+  msgEl.textContent = text || "";
+}
+function setSpinEnabled(on){
+  spinBtn.classList.toggle("disabled", !on);
+}
+function setClearEnabled(on){
+  clearBtn.classList.toggle("disabled", !on);
+}
+function updateAnswerLine(){
+  if(builtTokens.length === 0){
+    answerLine.textContent = "";
+    placeholder.style.display = "block";
+    return;
+  }
+  placeholder.style.display = "none";
+  answerLine.textContent = builtTokens.join(" ");
+}
+
+function unlockAudioOnce(){
+  if(audioUnlocked) return;
+  // Try to play silently to unlock on first user gesture
+  dingEl.volume = 0;
+  const p = dingEl.play();
+  if(p && typeof p.then === "function"){
+    p.then(()=>{
+      dingEl.pause();
+      dingEl.currentTime = 0;
+      dingEl.volume = 1;
+      audioUnlocked = true;
+    }).catch(()=>{
+      // if blocked, we still mark false; user will click again anyway
+      dingEl.volume = 1;
+    });
+  }else{
+    dingEl.volume = 1;
+    audioUnlocked = true;
+  }
+}
+
+function playDing(){
+  try{
+    dingEl.currentTime = 0;
+    dingEl.play();
+  }catch(e){}
+}
+
+function speakText(text, onEnd){
+  // cancel any previous
+  try{ speechSynthesis.cancel(); }catch(e){}
+  let finished = false;
+
+  // Fallback timer in case speech doesn't fire onend
+  const fallback = setTimeout(()=>{
+    if(finished) return;
+    finished = true;
+    if(onEnd) onEnd();
+  }, 2200);
+
+  try{
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US";
+    u.rate = 0.95;
+    u.onend = ()=>{
+      if(finished) return;
+      finished = true;
+      clearTimeout(fallback);
+      if(onEnd) onEnd();
+    };
+    speechSynthesis.speak(u);
+  }catch(e){
+    clearTimeout(fallback);
+    if(onEnd) onEnd();
+  }
+}
+
+/* =========================
+   Wheel Icons
+========================= */
+function renderWheelIcons(){
+  wheelEl.innerHTML = "";
+  const radius = 168;
+  ITEMS.forEach((item, i)=>{
+    const angleDeg = (i * SEG_DEG) + (SEG_DEG/2);
+    const angleRad = (angleDeg - 90) * Math.PI / 180;
+    const x = Math.cos(angleRad) * radius;
+    const y = Math.sin(angleRad) * radius;
+
+    const icon = document.createElement("div");
+    icon.className = "icon";
+    icon.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+
+    const img = document.createElement("img");
+    img.src = item.img;
+    img.alt = item.key;
+    icon.appendChild(img);
+    wheelEl.appendChild(icon);
+  });
+}
+
+/* =========================
+   Sentence rules
+========================= */
+function getQuestion(item){
+  if(item.type === "he") return "Who is he?";
+  if(item.type === "she") return "Who is she?";
+  return "What is it?";
+}
+function getAnswerTokens(item){
+  if(item.type === "he") return ["He","is","my","father", DOT];
+  if(item.type === "she") return ["She","is","my","mother", DOT];
+  const article = (item.key === "ox") ? "an" : "a";
+  return ["It","is",article,item.key, DOT];
+}
+function answerSentence(item){
+  const toks = getAnswerTokens(item).filter(t=>t!==DOT);
+  return toks.join(" ") + ".";
+}
+
+/* =========================
+   Cards
+========================= */
+function buildCards(item){
+  const correct = getAnswerTokens(item);
+  const others = NOUN_POOL.filter(n=>n!==item.key);
+  const distractors = shuffle(others).slice(0, 3); // nouns only
+
+  // Mix correct tokens + distractor nouns
+  let pool = correct.concat(distractors);
+
+  // de-dup for safety
+  pool = pool.filter((t, idx)=> pool.indexOf(t) === idx || t === DOT);
+
+  // shuffle
+  pool = shuffle(pool).map((t, idx)=>({
+    id: `${t}__${idx}__${Math.random().toString(16).slice(2)}`,
+    text: t
+  }));
+  return pool;
+}
+
+function renderCards(cards){
+  cardsEl.innerHTML = "";
+  cards.forEach((c, i)=>{
+    const div = document.createElement("div");
+    div.className = `wordCard ${milkClasses[i % milkClasses.length]}`;
+    div.textContent = c.text;
+    if(c.text === DOT) div.classList.add("dot");
+
+    div.addEventListener("click", ()=>{
+      if(locked) return;
+      if(!allowAnswer) return; // 🔥 only after question spoken
+      if(div.classList.contains("used")) return;
+
+      builtTokens.push(c.text);
+      div.classList.add("used");
+      updateAnswerLine();
+
+      if(c.text === DOT){
+        checkAnswer();
+      }
+    });
+
+    cardsEl.appendChild(div);
+  });
+}
+
+/* =========================
+   Game control
+========================= */
+function resetRoundUI(){
+  builtTokens = [];
+  updateAnswerLine();
+  cardsEl.innerHTML = "";
+  setClearEnabled(false);
+  allowAnswer = false;
+  placeholder.textContent = "Wait for the question…";
+}
+
+function startNewGame(){
+  remainingKeys = shuffle(ITEMS.map(x=>x.key));
+  currentTarget = null;
+
+  absoluteRotation = 0;
+  wheelEl.style.transition = "none";
+  wheelEl.style.transform = "rotate(0deg)";
+  void wheelEl.offsetWidth;
+  wheelEl.style.transition = "transform 3.1s cubic-bezier(.10,.95,.15,1)";
+
+  statusEl.textContent = "Round: 0 / 7";
+  qBubble.textContent = "Click SPIN!";
+  setMsg("Tap SPIN to start.");
+  resetRoundUI();
+  setSpinEnabled(true);
+
+  gameEl.style.display = "grid";
+  doneEl.style.display = "none";
+}
+
+function spin(){
+  if(locked) return;
+  if(remainingKeys.length === 0) return;
+
+  unlockAudioOnce(); // ✅ fix: unlock sound permission on first user click
+
+  locked = true;
+  setSpinEnabled(false);
+  resetRoundUI();
+  qBubble.textContent = "Spinning…";
+  setMsg("Spinning…");
+
+  const nextKey = remainingKeys.pop();
+  currentTarget = ITEMS.find(x=>x.key===nextKey);
+
+  const idx = ITEMS.findIndex(x=>x.key===nextKey);
+  const targetCenter = idx*SEG_DEG + SEG_DEG/2;
+  const desiredAtTop = (360 - targetCenter) % 360;
+
+  const currentAtTop = ((absoluteRotation % 360) + 360) % 360;
+  let delta = (desiredAtTop - currentAtTop + 360) % 360;
+
+  const extraSpins = 4 + Math.floor(Math.random()*2); // 4~5 turns
+  absoluteRotation += extraSpins*360 + delta;
+
+  wheelEl.style.transform = `rotate(${absoluteRotation}deg)`;
+
+  // after wheel stops:
+  setTimeout(()=>{
+    const roundNum = 7 - remainingKeys.length;
+    statusEl.textContent = `Round: ${roundNum} / 7`;
+
+    const question = getQuestion(currentTarget);
+    qBubble.textContent = question;
+    setMsg("Listen to the question…");
+
+    // ✅ first speak question, then enable answering
+    speakText(question, ()=>{
+      // Now show cards + allow click
+      renderCards(buildCards(currentTarget));
+      allowAnswer = true;
+      setClearEnabled(true);
+      placeholder.textContent = "Tap word cards to build the sentence…";
+      setMsg("Now answer! Build the sentence → tap ●");
+      locked = false;
+    });
+
+  }, 3150);
+}
+
+function checkAnswer(){
+  if(!currentTarget) return;
+
+  const expected = getAnswerTokens(currentTarget);
+  const ok =
+    builtTokens.length === expected.length &&
+    builtTokens.every((t,i)=> t === expected[i]);
+
+  if(!ok){
+    const correctText = expected.filter(t=>t!==DOT).join(" ") + " " + DOT;
+    setMsg(`Oops! Correct: ${correctText}  (Try again)`);
+    // keep same target, reshuffle cards
+    allowAnswer = false;
+    locked = true;
+    setTimeout(()=>{
+      resetRoundUI();
+      renderCards(buildCards(currentTarget));
+      allowAnswer = true;
+      setClearEnabled(true);
+      setMsg("Try again! Build the sentence → tap ●");
+      locked = false;
+    }, 900);
+    return;
+  }
+
+  // ✅ Correct: speak answer sentence, then ding, then auto next
+  allowAnswer = false;
+  locked = true;
+  setClearEnabled(false);
+  setMsg("Correct! Listen…");
+
+  const ans = answerSentence(currentTarget);
+
+  speakText(ans, ()=>{
+    // after speaking answer
+    playDing();
+
+    setTimeout(()=>{
+      // next
+      if(remainingKeys.length === 0){
+        gameEl.style.display = "none";
+        doneEl.style.display = "flex";
+        return;
+      }
+      qBubble.textContent = "Click SPIN!";
+      setMsg("Tap SPIN for the next one.");
+      resetRoundUI();
+      setSpinEnabled(true);
+      locked = false;
+    }, 650);
+  });
+}
+
+/* =========================
+   Events
+========================= */
+spinBtn.addEventListener("click", ()=>{
+  if(spinBtn.classList.contains("disabled")) return;
+  spin();
+});
+
+clearBtn.addEventListener("click", ()=>{
+  if(locked) return;
+  if(!currentTarget) return;
+  builtTokens = [];
+  updateAnswerLine();
+  // also reset used cards
+  [...cardsEl.children].forEach(el=> el.classList.remove("used"));
+  setMsg("Cleared. Try again!");
+});
+
+restartBtn.addEventListener("click", startNewGame);
+
+/* =========================
+   Init
+========================= */
+renderWheelIcons();
+startNewGame();
+</script>
+
+</body>
+</html>
