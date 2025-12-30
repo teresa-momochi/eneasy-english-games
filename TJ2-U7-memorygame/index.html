@@ -1,478 +1,451 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <title>Matching Game - Word & Picture</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="google" content="notranslate" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="google" content="notranslate">
+  <title>翻牌配對（TV 教室模式）10 組配對｜20 張卡</title>
 
   <style>
+    /**************************************************************
+     * 【0】你要更換「底色（背景）」➡️ 就改這裡（粉紅→粉黃 漸層）
+     * ------------------------------------------------------------
+     * ✅ 需求：淺粉紅 + 淺黃色 漸層（不要黑色恐怖）
+     **************************************************************/
     :root{
-      --bg:#f5f5f5;
-      --card:#ffffff;
-      --line:#ccc;
-      --back:#ffd54f;
-      --accent:#1565c0;
+      --bg1:#ffd6e7;   /* 淺粉紅 */
+      --bg2:#fff2b8;   /* 淺黃色 */
+      --cardBackBorder: rgba(255,255,255,.55);
+      --cardFrontBorder: rgba(255,255,255,.55);
+      --shadow: 0 16px 28px rgba(0,0,0,.18);
+      --text:#2a2a2a;
+      --muted: rgba(0,0,0,.55);
+      --matchOutline: rgba(46, 229, 157, .75);
     }
-    *{ box-sizing:border-box; }
 
+    *{ box-sizing:border-box; }
     body{
-      font-family: Arial, "Microsoft JhengHei", sans-serif;
-      background: var(--bg);
+      margin:0;
+      font-family: system-ui, -apple-system, "Segoe UI", Arial, "Microsoft JhengHei", sans-serif;
+
+      /* ✅ 粉紅→粉黃漸層背景（TV 友善） */
+      background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%);
+
+      color: var(--text);
+      min-height:100vh;
       display:flex;
       flex-direction:column;
       align-items:center;
-      justify-content:flex-start;
-      min-height:100vh;
-      margin:0;
-      padding:20px;
+      padding: 18px;
     }
 
+    header{
+      width:min(1400px, 98vw);
+      text-align:center;
+      margin: 6px 0 12px;
+    }
     h1{
-      margin: 10px 0 5px;
-      font-size: 24px;
-      text-align:center;
+      margin:0;
+      font-size: clamp(20px, 2.2vw, 34px);
+      font-weight: 900;
+      letter-spacing: .5px;
     }
-    p.subtitle{
-      margin: 0 0 10px;
-      font-size: 14px;
-      text-align:center;
-      max-width: 860px;
-      line-height: 1.4;
-    }
-
-    #hud{
-      width: min(980px, 100%);
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      justify-content:center;
-      align-items:center;
-      margin: 8px 0 10px;
-    }
-    .pill{
-      background:#fff;
-      border:1px solid #e3e3e3;
-      border-radius:999px;
-      padding:6px 12px;
-      font-size:14px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    .subtitle{
+      margin: 6px 0 0;
+      font-size: clamp(13px, 1.4vw, 18px);
+      color: var(--muted);
+      font-weight: 700;
     }
 
-    #controls{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      justify-content:center;
-      align-items:center;
-    }
-    button{
-      padding: 8px 14px;
-      border-radius: 8px;
-      border: none;
-      background: #42a5f5;
-      color: #fff;
-      font-size: 14px;
-      cursor: pointer;
-    }
-    button:hover{ filter: brightness(1.06); }
-
-    #message{
-      margin-top: 6px;
-      font-size: 14px;
-      text-align: center;
-      min-height: 18px;
-    }
-
-    #game-board{
-      width: min(980px, 100%);
+    /**************************************************************
+     * 【1】棋盤設定（方案 A：10 組配對＝20 張卡）
+     * ------------------------------------------------------------
+     * ✅ 20 張卡建議用 5 欄 x 4 列（電視/投影很適合）
+     **************************************************************/
+    #board{
+      width:min(1400px, 98vw);
       display:grid;
-      grid-template-columns: repeat(5, minmax(70px, 1fr));
-      gap: 10px;
-      justify-content:center;
-      margin-top: 10px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-top: 8px;
     }
+    @media (max-width: 1000px){ #board{ grid-template-columns: repeat(4, 1fr); } }
+    @media (max-width: 700px){  #board{ grid-template-columns: repeat(3, 1fr); } }
 
-    @media (max-width: 520px){
-      #game-board{ grid-template-columns: repeat(4, minmax(70px, 1fr)); }
-    }
-
+    /**************************************************************
+     * 【2】卡片翻面外觀
+     **************************************************************/
     .card{
-      width: 100%;
-      padding-top: 100%;
-      position: relative;
-      perspective: 800px;
-      cursor: pointer;
+      position:relative;
+      aspect-ratio: 4 / 3;
+      border-radius: 16px;
+      perspective: 1000px;
+      user-select:none;
+      cursor:pointer;
+      box-shadow: var(--shadow);
+      background: transparent;
     }
+    .card:active{ transform: translateY(1px); }
 
-    .card-inner{
-      position:absolute;
-      inset:0;
-      transition: transform 0.4s;
+    .inner{
+      position:absolute; inset:0;
+      transition: transform 260ms ease;
       transform-style: preserve-3d;
+      border-radius: 16px;
     }
-
-    .card.flipped .card-inner,
-    .card.matched .card-inner{
+    .card.flipped .inner,
+    .card.matched .inner{
       transform: rotateY(180deg);
     }
 
-    .card-front,
-    .card-back{
-      position:absolute;
-      inset:0;
-      backface-visibility:hidden;
-      border-radius:10px;
+    .face{
+      position:absolute; inset:0;
+      border-radius: 16px;
+      backface-visibility: hidden;
       display:flex;
       align-items:center;
       justify-content:center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-      user-select:none;
-      background: var(--card);
-      border: 2px solid var(--line);
       overflow:hidden;
     }
 
-    .card-back{
-      background: var(--back);
+    /**************************************************************
+     * 【3】背面：固定 smile.png（你提供的背面版面）
+     * ------------------------------------------------------------
+     * ✅ 你要換背面圖片 ➜ 看 JS 區塊【B】BACK_IMAGE
+     **************************************************************/
+    .back{
+      background: rgba(255,255,255,.55);
+      border: 3px solid var(--cardBackBorder);
     }
-    .card-back img{
-      max-width: 90%;
-      max-height: 90%;
+    .back img{
+      width: 78%; height: 78%;
       object-fit: contain;
-      display:block;
+      filter: drop-shadow(0 10px 12px rgba(0,0,0,.18));
     }
 
-    .card-front{
+    /**************************************************************
+     * 【4】正面：文字卡 or 圖片卡
+     **************************************************************/
+    .front{
       transform: rotateY(180deg);
-      padding: 6px;
+      background: rgba(255,255,255,.72);
+      border: 3px solid var(--cardFrontBorder);
+    }
+
+    /* ✅ 老師模式：字要大（因為卡很多，仍維持遠看清楚） */
+    .word{
+      width:100%; height:100%;
+      display:flex; align-items:center; justify-content:center;
+      text-align:center;
+      padding: 10px;
+      font-weight: 1000;
+      letter-spacing: 1.2px;
+      text-transform: lowercase;
+      color:#1f1f1f;
+      text-shadow: 0 6px 10px rgba(0,0,0,.10);
+      font-size: clamp(22px, 2.2vw, 44px);
+    }
+
+    .pic{ width:100%; height:100%; display:flex; align-items:center; justify-content:center; padding: 10px; }
+    .pic img{ width: 92%; height: 92%; object-fit: contain; filter: drop-shadow(0 12px 16px rgba(0,0,0,.15)); }
+
+    .card.matched{
+      cursor: default;
+      outline: 4px solid var(--matchOutline);
+      border-radius: 16px;
+    }
+
+    /**************************************************************
+     * 【5】勝利畫面：只在全部配對成功時出現（中央超大秒數）
+     * ------------------------------------------------------------
+     * ✅ 遊戲進行中：完全不顯示計時器（符合你的定稿）
+     **************************************************************/
+    #winOverlay{
+      position:fixed; inset:0;
+      display:none;
+      align-items:center; justify-content:center;
+      background: rgba(0,0,0,.45);
+      z-index: 999;
+    }
+    #winOverlay.show{ display:flex; }
+
+    .winBox{
+      width:min(920px, 92vw);
+      padding: 26px 18px;
+      border-radius: 26px;
+      background: rgba(255,255,255,.92);
+      border: 3px solid rgba(255,255,255,.8);
+      box-shadow: 0 30px 80px rgba(0,0,0,.35);
       text-align:center;
     }
-
-    .word-card{
-      color: var(--accent);
+    .winTitle{
+      margin: 0 0 10px;
+      font-weight: 900;
+      font-size: clamp(20px, 3vw, 34px);
+      color: #222;
+    }
+    .winTime{
+      margin: 0;
+      font-weight: 1000;
+      letter-spacing: 2px;
+      font-size: clamp(62px, 7vw, 130px); /* ✅ 超大秒數：TV 遠距離用 */
+      color: #111;
+      text-shadow: 0 12px 20px rgba(0,0,0,.15);
+    }
+    .winHint{
+      margin: 10px 0 0;
+      font-size: clamp(14px, 2vw, 20px);
+      color: rgba(0,0,0,.55);
       font-weight: 700;
-      font-size: 22px;
-      letter-spacing: 0.5px;
-    }
-
-    .card-front img{
-      max-width: 92%;
-      max-height: 92%;
-      object-fit: contain;
-      display:block;
-    }
-
-    .dim{
-      opacity: 0.55;
-      pointer-events:none;
     }
   </style>
 </head>
 
 <body>
-  <h1>Matching Game</h1>
-  <p class="subtitle">
-    規則：翻牌就會唸單字（第一張也唸、第二張也唸）。文字＋圖片配對成功會留下來。
-    全部 10 對完成：停止計時 → 播放一次 sounds/harry.mp3 → 自動洗牌進下一局（計時歸零）。
-  </p>
+  <header>
+    <h1>翻牌配對（TV 教室模式）</h1>
+    <div class="subtitle">遊戲中不顯示計時｜全部配對成功才公布秒數＋播放音效</div>
+  </header>
 
-  <div id="hud">
-    <div class="pill">⏱️ Time: <span id="time">00:00</span></div>
-    <div class="pill">✅ Matched: <span id="matched">0</span>/10</div>
-    <div id="controls">
-      <button id="reset-btn">重新洗牌</button>
+  <main id="board" aria-label="game board"></main>
+
+  <!-- ✅ 勝利瞬間：中央超大秒數 -->
+  <div id="winOverlay" role="dialog" aria-modal="true">
+    <div class="winBox">
+      <p class="winTitle">🎉 全部配對成功！</p>
+      <p class="winTime" id="winTimeText">00.00s</p>
+      <p class="winHint">即將自動洗牌進入下一局…</p>
     </div>
   </div>
 
-  <div id="message"></div>
-  <div id="game-board"></div>
+  <!-- ✅ 勝利音效：你要換音效檔名就看 JS 區塊【C】WIN_SOUND -->
+  <audio id="winSound" preload="auto"></audio>
 
   <script>
-    /********************
-     * 你只要改這裡：10 個單字（必須對應 images/<word>.png）
-     ********************/
-    const words = ["kid", "keg", "kite", "lamp", "leg", "lab", "bell", "wall", "doll", "clock"];
+    /*****************************************************************
+     * 【A】你要更換「單字 + 圖片」➡️ 就改這裡（10 組配對）
+     * --------------------------------------------------------------
+     * ✅ 你指定的 10 個單字（對應你的 images 檔名）：
+     * bell, clock, doll, keg, kid, kite, lab, lamp, leg, wall
+     *
+     * 規則：
+     * - 每一組會自動生成兩張卡：文字卡 + 圖片卡
+     * - 10 組 ⇒ 20 張卡（方案 A）
+     *****************************************************************/
+    const PAIRS = [
+      { word:"bell",  img:"bell.png"  },
+      { word:"clock", img:"clock.png" },
+      { word:"doll",  img:"doll.png"  },
+      { word:"keg",   img:"keg.png"   },
+      { word:"kid",   img:"kid.png"   },
+      { word:"kite",  img:"kite.png"  },
+      { word:"lab",   img:"lab.png"   },
+      { word:"lamp",  img:"lamp.png"  },
+      { word:"leg",   img:"leg.png"   },
+      { word:"wall",  img:"wall.png"  },
+    ];
+    // ↑↑↑ 以後要換內容：只改這個清單（單字 / 圖片檔名）
 
-    /********************
-     * 固定檔案路徑（依你的資料夾）
-     ********************/
+    /*****************************************************************
+     * 【B】你要更換「背面圖片」➡️ 就改這裡
+     * --------------------------------------------------------------
+     * ✅ 你提供：images/smile.png 是背面版面
+     *****************************************************************/
     const BACK_IMAGE = "images/smile.png";
+
+    /*****************************************************************
+     * 【C】你要更換「勝利音效」➡️ 就改這裡
+     * --------------------------------------------------------------
+     * ✅ 你提供：sounds/harry.mp3
+     *****************************************************************/
     const WIN_SOUND = "sounds/harry.mp3";
 
-    const board = document.getElementById("game-board");
-    const resetBtn = document.getElementById("reset-btn");
-    const messageEl = document.getElementById("message");
-    const timeEl = document.getElementById("time");
-    const matchedEl = document.getElementById("matched");
+    /*****************************************************************
+     * 【D】勝利秒數顯示停留多久（毫秒）➡️ 想更震撼就加長
+     *****************************************************************/
+    const WIN_SHOW_MS = 1800;
 
-    // 全通關音效：只在整局完成時播放一次
-    const winSound = new Audio(WIN_SOUND);
-    winSound.preload = "auto";
+    /*****************************************************************
+     * 【E】TTS（電腦唸單字）設定
+     * --------------------------------------------------------------
+     * ✅ 需求：翻牌時（翻到文字卡或圖片卡）都要唸該單字
+     *****************************************************************/
+    const TTS_LANG  = "en-US";
+    const TTS_RATE  = 0.90;
+    const TTS_PITCH = 1.00;
 
-    let cardsData = [];
+    /*****************************************************************
+     * 以下是遊戲核心：通常不需要改（除非你要加新功能）
+     *****************************************************************/
+    const boardEl = document.getElementById("board");
+    const winOverlay = document.getElementById("winOverlay");
+    const winTimeText = document.getElementById("winTimeText");
+    const winSound = document.getElementById("winSound");
+    winSound.src = WIN_SOUND;
+
+    let deck = [];
     let firstCard = null;
     let secondCard = null;
-    let lockBoard = false;
+    let lock = false;
 
-    // 計時
-    let timerId = null;
-    let startMs = 0;
-    let elapsedMs = 0;
+    // ✅ 計時：背景計算，UI 不顯示；成功才公布
+    let startTime = 0;
+    let running = false;
 
-    // matched 計數（以「對」計）
-    let matchedPairs = 0;
-
-    // 洗牌
-    function shuffle(array){
-      for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-      }
-      return array;
-    }
-
-    // 建立 20 張資料：10 word + 10 image
-    function createCardsData(){
-      const temp = [];
-      words.forEach(word => {
-        temp.push({ key: word, type: "word" });
-        temp.push({ key: word, type: "image" });
-      });
-      cardsData = shuffle(temp);
-    }
-
-    function buildBoard(){
-      board.innerHTML = "";
-
-      cardsData.forEach((data, index) => {
-        const card = document.createElement("div");
-        card.className = "card";
-        card.dataset.index = String(index);
-        card.dataset.key = data.key;
-        card.dataset.type = data.type;
-
-        const inner = document.createElement("div");
-        inner.className = "card-inner";
-
-        // 背面：smile.png
-        const back = document.createElement("div");
-        back.className = "card-back";
-        const backImg = document.createElement("img");
-        backImg.src = BACK_IMAGE;
-        backImg.alt = "back";
-        backImg.onerror = () => {
-          back.textContent = "😊";
-          back.style.fontSize = "34px";
-          back.style.fontWeight = "700";
-        };
-        back.appendChild(backImg);
-
-        // 正面：文字 or 圖片
-        const front = document.createElement("div");
-        front.className = "card-front";
-
-        if (data.type === "word") {
-          front.classList.add("word-card");
-          front.textContent = data.key;
-        } else {
-          const img = document.createElement("img");
-          img.src = "images/" + data.key + ".png";
-          img.alt = data.key;
-          img.onerror = () => {
-            // 圖抓不到至少顯示字，不要空白
-            front.innerHTML = "";
-            front.classList.add("word-card");
-            front.textContent = data.key;
-          };
-          front.appendChild(img);
-        }
-
-        inner.appendChild(back);
-        inner.appendChild(front);
-        card.appendChild(inner);
-
-        card.addEventListener("click", onCardClick);
-        board.appendChild(card);
-      });
-    }
-
-    /********************
-     * 朗讀：翻牌就唸（A：第一張也唸、第二張也唸）
-     ********************/
+    // TTS
+    const canSpeak = ("speechSynthesis" in window) && ("SpeechSynthesisUtterance" in window);
     function speakWord(word){
-      if (!("speechSynthesis" in window)) return;
+      if(!canSpeak) return;
       try{
         window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(word);
-        utter.lang = "en-US";
-        utter.rate = 0.9;
-        window.speechSynthesis.speak(utter);
-      }catch(e){
-        // 忽略
+        const u = new SpeechSynthesisUtterance(word);
+        u.lang  = TTS_LANG;
+        u.rate  = TTS_RATE;
+        u.pitch = TTS_PITCH;
+        window.speechSynthesis.speak(u);
+      }catch(e){}
+    }
+
+    function shuffle(arr){
+      for(let i = arr.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // ✅ 每個單字做兩張牌（word + pic）→ 20 張
+    function buildDeck(){
+      const cards = [];
+      for(const p of PAIRS){
+        cards.push({ type:"word", key:p.word, word:p.word, img:p.img });
+        cards.push({ type:"pic",  key:p.word, word:p.word, img:p.img });
+      }
+      return shuffle(cards);
+    }
+
+    function formatSeconds(ms){
+      return (ms/1000).toFixed(2) + "s";
+    }
+
+    function startHiddenTimerIfNeeded(){
+      // ✅ 第一次翻牌才開始計時（仍然不顯示在畫面上）
+      if(!running){
+        running = true;
+        startTime = performance.now();
       }
     }
 
-    /********************
-     * 計時
-     ********************/
-    function formatTime(ms){
-      const totalSec = Math.floor(ms / 1000);
-      const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
-      const ss = String(totalSec % 60).padStart(2, "0");
-      return `${mm}:${ss}`;
+    function renderBoard(deck){
+      boardEl.innerHTML = "";
+      deck.forEach((cardData, idx) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.dataset.index = String(idx);
+        card.dataset.key   = cardData.key;    // 配對用 key
+        card.dataset.word  = cardData.word;   // 唸的單字
+        card.dataset.type  = cardData.type;   // word / pic
+
+        card.innerHTML = `
+          <div class="inner">
+            <div class="face back">
+              <img src="${BACK_IMAGE}" alt="back" />
+            </div>
+            <div class="face front">
+              ${
+                cardData.type === "word"
+                  ? `<div class="word">${cardData.word}</div>`
+                  : `<div class="pic"><img src="images/${cardData.img}" alt="${cardData.word}" /></div>`
+              }
+            </div>
+          </div>
+        `;
+
+        card.addEventListener("click", () => onCardClick(card));
+        boardEl.appendChild(card);
+      });
     }
 
-    function startTimer(){
-      stopTimer();
-      startMs = Date.now();
-      elapsedMs = 0;
-      timeEl.textContent = "00:00";
-      timerId = setInterval(() => {
-        elapsedMs = Date.now() - startMs;
-        timeEl.textContent = formatTime(elapsedMs);
-      }, 250);
+    function resetRound(){
+      firstCard = null;
+      secondCard = null;
+      lock = false;
+
+      running = false;
+      startTime = 0;
+
+      deck = buildDeck();
+      renderBoard(deck);
+
+      winOverlay.classList.remove("show");
     }
 
-    function stopTimer(){
-      if (timerId){
-        clearInterval(timerId);
-        timerId = null;
-      }
-    }
+    function onCardClick(cardEl){
+      if(lock) return;
+      if(cardEl.classList.contains("matched")) return;
+      if(cardEl.classList.contains("flipped")) return;
+      if(cardEl === firstCard) return;
 
-    function setMessage(text){
-      messageEl.textContent = text || "";
-    }
+      startHiddenTimerIfNeeded();       // ✅ 背景開始計時（不顯示）
+      cardEl.classList.add("flipped");  // 翻牌
+      speakWord(cardEl.dataset.word);   // ✅ 翻到就唸（文字卡/圖片卡都唸）
 
-    function updateMatchedHud(){
-      matchedEl.textContent = String(matchedPairs);
-    }
-
-    /********************
-     * 點牌
-     ********************/
-    function onCardClick(e){
-      if (lockBoard) return;
-
-      const card = e.currentTarget;
-      if (card.classList.contains("flipped")) return;
-      if (card.classList.contains("matched")) return;
-
-      // 翻開
-      card.classList.add("flipped");
-
-      // ✅ A：每翻一張都唸
-      speakWord(card.dataset.key);
-
-      // 第一張
-      if (!firstCard){
-        firstCard = card;
+      if(!firstCard){
+        firstCard = cardEl;
         return;
       }
 
-      // 第二張
-      if (card === firstCard) return;
+      secondCard = cardEl;
+      lock = true;
 
-      secondCard = card;
-      lockBoard = true;
-      checkForMatch();
-    }
+      // ✅ 必須是「文字 + 圖片」才算成功（同字 key 一樣，type 不一樣）
+      const isMatch =
+        firstCard.dataset.key === secondCard.dataset.key &&
+        firstCard.dataset.type !== secondCard.dataset.type;
 
-    function checkForMatch(){
-      const sameWord = firstCard.dataset.key === secondCard.dataset.key;
-      const differentType = firstCard.dataset.type !== secondCard.dataset.type;
-
-      if (sameWord && differentType){
-        // ✅ 成功
+      if(isMatch){
         firstCard.classList.add("matched");
         secondCard.classList.add("matched");
-        matchedPairs += 1;
-        updateMatchedHud();
-        setMessage("👍 Good! 找到一對！");
-        resetSelection();
 
-        // ✅ 全通關
-        if (matchedPairs === words.length){
-          onRoundComplete();
+        firstCard = null;
+        secondCard = null;
+        lock = false;
+
+        // 全部配對成功？
+        if(document.querySelectorAll(".card.matched").length === deck.length){
+          onWin();
         }
-      } else {
-        // ❌ 失敗，翻回去
+      }else{
         setTimeout(() => {
           firstCard.classList.remove("flipped");
           secondCard.classList.remove("flipped");
-          resetSelection();
-        }, 800);
+          firstCard = null;
+          secondCard = null;
+          lock = false;
+        }, 650);
       }
     }
 
-    function resetSelection(){
-      firstCard = null;
-      secondCard = null;
-      lockBoard = false;
+    async function onWin(){
+      // ✅ 成功才公布秒數（中央大字）
+      const elapsed = performance.now() - startTime;
+      winTimeText.textContent = formatSeconds(elapsed);
+      winOverlay.classList.add("show");
+
+      // ✅ 成功瞬間播放音效（一次）
+      try{
+        winSound.currentTime = 0;
+        await winSound.play();
+      }catch(e){}
+
+      // 停留一下 → 自動洗牌下一局
+      setTimeout(() => {
+        resetRound();
+      }, WIN_SHOW_MS);
     }
 
-    /********************
-     * 全通關：停止計時 → 播一次 MP3 → 自動洗牌進下一局
-     ********************/
-    function onRoundComplete(){
-      stopTimer();
-      lockBoard = true; // 先鎖住不要再點
-      setMessage(`🎉 All matched! Time: ${timeEl.textContent}  播放音效後進下一局…`);
-
-      // 保護：避免上一輪 onended 影響
-      winSound.onended = null;
-
-      // 從頭播一次
-      try { winSound.currentTime = 0; } catch(e){}
-
-      const goNextRound = () => {
-        // 避免重複觸發
-        winSound.onended = null;
-        resetGame();
-      };
-
-      // 嘗試播放（通常因為玩家有互動，會成功）
-      winSound.play()
-        .then(() => {
-          // 播完立刻下一局
-          winSound.onended = goNextRound;
-
-          // 備援：有些瀏覽器不一定會觸發 onended（極少），給個上限保護
-          setTimeout(goNextRound, 5000);
-        })
-        .catch(() => {
-          // 若被瀏覽器擋，直接下一局（不要卡住）
-          goNextRound();
-        });
-    }
-
-    /********************
-     * 重置一局：洗牌 + 重建 + 計時歸零開始
-     ********************/
-    function resetGame(){
-      // 取消可能正在念的字
-      if ("speechSynthesis" in window) {
-        try { window.speechSynthesis.cancel(); } catch(e){}
-      }
-
-      stopTimer();
-      setMessage("");
-      lockBoard = false;
-      firstCard = null;
-      secondCard = null;
-      matchedPairs = 0;
-      updateMatchedHud();
-
-      createCardsData();
-      buildBoard();
-      startTimer();
-    }
-
-    resetBtn.addEventListener("click", resetGame);
-
-    // 啟動第一局
-    resetGame();
+    // 第一局開始
+    resetRound();
   </script>
 </body>
 </html>
