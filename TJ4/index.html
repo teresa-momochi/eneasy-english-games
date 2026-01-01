@@ -1,84 +1,241 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TJ4 Class - English Game Lobby</title>
-    <style>
-        /* 16:9 比例鎖定與背景 */
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { 
-            width: 100%; height: 100%; overflow: hidden; 
-            background-color: #000; font-family: "Microsoft JhengHei", sans-serif;
-        }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1920, initial-scale=1" />
+  <meta name="google" content="notranslate">
+  <title>TJ4 遊戲入口</title>
 
-        #lobby-stage {
-            position: absolute;
-            top: 50%; left: 50%;
-            width: 100vw; height: 56.25vw;
-            max-height: 100vh; max-width: 177.78vh;
-            transform: translate(-50%, -50%);
-            background-image: url('../images/pages/bg.png'); /* 使用上一層的背景圖 */
-            background-size: cover;
-            background-position: center;
-        }
+  <style>
+    /* ====== 全畫面固定（16:9） ====== */
+    html, body { height: 100%; margin: 0; }
+    body{
+      background:#0b0f24;
+      color:#fff;
+      font-family: system-ui, "Microsoft JhengHei", Arial, sans-serif;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
 
-        /* 標題：TJ4 專屬大廳 */
-        #title-banner {
-            position: absolute;
-            top: 5%; left: 0; width: 100%;
-            text-align: center;
-            font-size: 4vw; color: white;
-            text-shadow: 0px 4px 10px rgba(0,0,0,0.8);
-        }
+    /* 固定 16:9 容器（不做 RWD 重新排版） */
+    .stage{
+      width: 1920px;
+      height: 1080px;
+      position: relative;
+      overflow: hidden;
+      background: radial-gradient(1200px 600px at 60% 40%, rgba(0,255,255,.15), transparent 60%),
+                  radial-gradient(900px 500px at 30% 30%, rgba(255,0,255,.12), transparent 55%),
+                  linear-gradient(180deg, #081028 0%, #050716 100%);
+    }
 
-        /* 遊戲選擇區 - 視覺位置固定 */
-        .game-selection {
-            position: absolute;
-            top: 30%; left: 10%; width: 80%; height: 50%;
-            display: flex; justify-content: space-around; align-items: center;
-        }
+    /* 中央卡片 */
+    .panel{
+      position:absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 1200px;
+      padding: 42px 46px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.06);
+      border: 2px solid rgba(255,255,255,0.12);
+      box-shadow: 0 20px 60px rgba(0,0,0,.45);
+      backdrop-filter: blur(8px);
+    }
 
-        .game-card {
-            width: 22%; cursor: pointer;
-            transition: transform 0.3s, filter 0.3s;
-            text-align: center;
-        }
+    h1{
+      margin: 0 0 10px;
+      font-size: 54px;
+      letter-spacing: 1px;
+    }
+    .sub{
+      margin: 0 0 26px;
+      font-size: 20px;
+      opacity: .9;
+      line-height: 1.5;
+    }
 
-        .game-card:hover { transform: scale(1.1); filter: brightness(1.2); }
-        
-        .game-card img { width: 100%; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
-        
-        .game-label {
-            margin-top: 15px; font-size: 2vw; color: #fff;
-            background: rgba(0,0,0,0.6); border-radius: 10px; padding: 5px 10px;
-        }
+    /* Unit 按鈕區 */
+    .grid{
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin-top: 20px;
+    }
 
-        /* 離開回首頁按鈕 */
-        #exit-home {
-            position: absolute; bottom: 5%; right: 5%;
-            width: 6vw; cursor: pointer;
-        }
-    </style>
+    .unit{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      padding: 18px 20px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.10);
+      border: 2px solid rgba(255,255,255,0.16);
+      text-decoration:none;
+      color:#fff;
+      transition: transform .12s ease, background .12s ease;
+      cursor: pointer;
+    }
+    .unit:hover{
+      transform: translateY(-2px);
+      background: rgba(255,255,255,0.14);
+    }
+
+    .unit .left{
+      display:flex;
+      flex-direction:column;
+      gap: 6px;
+    }
+    .unit .title{
+      font-size: 26px;
+      font-weight: 800;
+    }
+    .unit .hint{
+      font-size: 16px;
+      opacity: .85;
+    }
+    .unit .go{
+      font-size: 18px;
+      opacity: .9;
+      white-space: nowrap;
+    }
+
+    /* 沒有 Unit 時的提示 */
+    .empty{
+      margin-top: 22px;
+      padding: 18px 20px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.08);
+      border: 2px dashed rgba(255,255,255,0.18);
+      font-size: 20px;
+      line-height: 1.6;
+      opacity: .95;
+    }
+
+    /* 角落小字 */
+    .corner{
+      position:absolute;
+      left: 22px;
+      bottom: 18px;
+      font-size: 14px;
+      opacity: .65;
+    }
+
+    /* 讓小螢幕也能看見（但不重排，僅縮放） */
+    @media (max-width: 1920px){
+      .stage{ transform: scale(calc(100vw / 1920)); transform-origin: top left; }
+      body{ justify-content:flex-start; align-items:flex-start; }
+    }
+    @media (max-height: 1080px){
+      .stage{ transform: scale(calc(100vh / 1080)); transform-origin: top left; }
+      body{ justify-content:flex-start; align-items:flex-start; }
+    }
+  </style>
 </head>
+
 <body>
+  <div class="stage">
+    <div class="panel">
+      <h1>🎮 TJ4 英文遊戲入口</h1>
+      <p class="sub">
+        家長您好，請選擇要練習的課程（Unit）。<br>
+        <b>新增 Unit 的方法：</b> 只要在 <code>TJ4/</code> 底下新增資料夾（例如 <code>U01/</code>），並放入該 Unit 的 <code>index.html</code>，這裡就會自動出現按鈕。
+      </p>
 
-<div id="lobby-stage">
-    <div id="title-banner">Welcome to TJ4 Game Room!</div>
-
-    <div class="game-selection">
-        <div class="game-card" onclick="location.href='spelling/index.html'">
-            <img src="../images/ui/rule.png"> <div class="game-label">Spelling Game</div>
-        </div>
-
-        <div class="game-card" style="opacity: 0.5; cursor: default;">
-            <img src="../images/ui/wrong.png">
-            <div class="game-label">Coming Soon</div>
-        </div>
+      <div id="unitArea"></div>
     </div>
 
-    <img src="../images/ui/exit.png" id="exit-home" onclick="location.href='../index.html'">
-</div>
+    <div class="corner">
+      入口網址：/TJ4/　｜　建議用 Chrome 開啟（避免 LINE 內建瀏覽器問題）
+    </div>
+  </div>
 
+  <script>
+    /**
+     * ✅ 入口頁自動生成 Unit 連結
+     * 原理：用「預設命名規則」猜測有哪些 Unit 資料夾存在，存在就顯示。
+     *
+     * 你之後只要照這些資料夾命名即可，不需要改程式：
+     *  - U01, U02, U03 ... U50（可自己調整上限）
+     *  每個資料夾裡放：index.html（你的遊戲）
+     *
+     * 例如：
+     *  TJ4/U01/index.html
+     *  TJ4/U02/index.html
+     */
+
+    const CONFIG = {
+      prefix: "U",          // Unit 資料夾前綴：U
+      digits: 2,            // 兩位數：01~50
+      maxUnit: 30,          // 你要先預留到幾課（可改 30/50/99）
+      labelPrefix: "Unit ", // 按鈕顯示文字
+    };
+
+    const unitArea = document.getElementById("unitArea");
+    const found = [];
+
+    function pad(n, digits){
+      return String(n).padStart(digits, "0");
+    }
+
+    async function exists(url){
+      try{
+        // 以 HEAD 嘗試抓該 unit 的 index.html
+        const res = await fetch(url, { method: "HEAD", cache: "no-store" });
+        return res.ok;
+      }catch(e){
+        return false;
+      }
+    }
+
+    async function build(){
+      // 逐個偵測 U01~Uxx 是否存在
+      for(let i=1;i<=CONFIG.maxUnit;i++){
+        const code = CONFIG.prefix + pad(i, CONFIG.digits); // U01
+        const url = `./${code}/index.html`;
+        if(await exists(url)){
+          found.push({ code, url, num: i });
+        }
+      }
+
+      if(found.length === 0){
+        unitArea.innerHTML = `
+          <div class="empty">
+            ✅ TJ4 入口已建立<br>
+            🚧 目前還沒有放入任何 Unit 遊戲<br><br>
+            你可以先建立資料夾：<code>TJ4/U01/</code><br>
+            然後把第一課遊戲的 <code>index.html</code> 放進去：<code>TJ4/U01/index.html</code><br>
+            放好後重新整理本頁，就會自動出現 Unit 01 的按鈕。
+          </div>
+        `;
+        return;
+      }
+
+      // 有找到 Unit → 生成按鈕
+      const grid = document.createElement("div");
+      grid.className = "grid";
+
+      found.sort((a,b)=>a.num-b.num).forEach(item=>{
+        const a = document.createElement("a");
+        a.className = "unit";
+        a.href = item.url;
+
+        a.innerHTML = `
+          <div class="left">
+            <div class="title">${CONFIG.labelPrefix}${pad(item.num, 2)}</div>
+            <div class="hint">${item.code} / index.html</div>
+          </div>
+          <div class="go">開始 ▶</div>
+        `;
+        grid.appendChild(a);
+      });
+
+      unitArea.appendChild(grid);
+    }
+
+    build();
+  </script>
 </body>
 </html>
