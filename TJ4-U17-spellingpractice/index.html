@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spelling Game - Fixed UI Edition (TJ4-U17)</title>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body, html {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: Arial, "Microsoft JhengHei", sans-serif;
+    }
+
+    /* =========================================================
+       🟩【背景】你的 pages 內檔名：bg.png
+       ✅ 原本 images/pages/bg.png → 改成 pages/bg.png
+    ========================================================== */
+    #game-stage{
+      position:absolute;
+      top:50%; left:50%;
+      width:100vw; height:56.25vw;
+      max-height:100vh; max-width:177.78vh;
+      transform:translate(-50%,-50%);
+      background-image:url('pages/bg.png');
+      background-size:cover;
+      background-position:center;
+    }
+
+    /* 工具列（右上） */
+    .toolbar{
+      position:absolute; top:3%; right:2%;
+      display:flex; gap:15px; z-index:100;
+      align-items:center;
+    }
+    .tool-btn{ width:5.5vw; height:5.5vw; cursor:pointer; position:relative; }
+    #mute-overlay{
+      position:absolute; top:0; left:0; width:100%; height:100%;
+      display:none; pointer-events:none;
+    }
+
+    /* =========================================================
+       🟦【字母區】左側字母貼紙
+    ========================================================== */
+    #keyboard-area{ position:absolute; top:12%; left:3%; width:40%; height:65%; }
+    .letter-sticker{
+      position:absolute;
+      width:18%;
+      cursor:pointer;
+      transition:transform .1s;
+      z-index:10;
+    }
+    .letter-sticker:active{ transform:scale(.9); }
+
+    /* =========================================================
+       🟩【答案框】你資料夾沒有 display_box.png
+       ✅ 改成純色長條，視覺接近你右圖的黃色框
+    ========================================================== */
+    #answer-display{
+      position:absolute; top:12%; left:45%;
+      width:50%; height:12%;
+      background: rgba(255, 233, 150, 0.85);
+      border-radius: 1.2vw;
+      display:flex; align-items:center; justify-content:center;
+      font-size:3vw; color:#333;
+      letter-spacing:.5vw; font-weight:800;
+    }
+
+    /* =========================================================
+       🟩【卡片（數字球）】card-item
+       ✅ 由 4 張 → 改成 8 張（13~20）
+    ========================================================== */
+    .card-item{
+      position:absolute;
+      width:14%;
+      transition:all .3s;
+      z-index:5;
+    }
+    .target-active{
+      filter: drop-shadow(0 0 15px gold);
+      animation: breathe 1.5s infinite ease-in-out;
+      z-index:20;
+    }
+    .target-inactive{ opacity:.55; filter: grayscale(20%); }
+    @keyframes breathe{
+      0%,100%{ transform:scale(1); filter: drop-shadow(0 0 10px gold); }
+      50%{ transform:scale(1.06); filter: drop-shadow(0 0 26px gold); }
+    }
+
+    /* 左下按鈕 */
+    #btn-cancel{ position:absolute; bottom:5%; left:2%; width:18%; cursor:pointer; z-index:30; }
+    #btn-enter{  position:absolute; bottom:5%; left:22%; width:18%; cursor:pointer; z-index:30; }
+
+    /* 錯誤層 */
+    #wrong-layer{
+      position:absolute; inset:0;
+      background: rgba(0,0,0,0.10);
+      display:none;
+      justify-content:center; align-items:center;
+      z-index:999;
+    }
+    #wrong-img{ width:45%; }
+
+    /* =========================================================
+       🟩【規則頁】你的 pages 內檔名：rule_spelling_game_16x9.png
+       ✅ 原本 images/pages/... → 改成 pages/...
+    ========================================================== */
+    #rule-screen{
+      position:absolute; inset:0;
+      background-image:url('pages/rule_spelling_game_16x9.png');
+      background-size:100% 100%;
+      z-index:2000;
+      display:flex;
+      justify-content:center;
+      align-items:flex-end;
+    }
+    #start-btn{ width:15%; margin-bottom:5%; cursor:pointer; }
+  </style>
+</head>
+
+<body>
+<div id="game-stage">
+
+  <div class="toolbar">
+    <!-- 🟩【UI】你的資料夾：ui/exit.png ui/rule.png ui/bgmusic.png -->
+    <img src="ui/exit.png" class="tool-btn" onclick="window.close()">
+    <img src="ui/rule.png" class="tool-btn" onclick="toggleRule(true)">
+
+    <div class="tool-btn" onclick="toggleMusic()">
+      <img src="ui/bgmusic.png" style="width:100%">
+      <svg id="mute-overlay" viewBox="0 0 100 100">
+        <line x1="10" y1="10" x2="90" y2="90" stroke="red" stroke-width="8"/>
+      </svg>
+    </div>
+  </div>
+
+  <div id="keyboard-area"></div>
+  <div id="answer-display"></div>
+
+  <!-- =========================================================
+       🟩【卡片位置】8 張（你可依右圖再微調 top/left）
+       這裡我先排成「右下群組」的視覺
+  ========================================================== -->
+  <img id="card-0" class="card-item" style="top:46%; left:52%;">
+  <img id="card-1" class="card-item" style="top:46%; left:66%;">
+  <img id="card-2" class="card-item" style="top:46%; left:80%;">
+
+  <img id="card-3" class="card-item" style="top:63%; left:48%;">
+  <img id="card-4" class="card-item" style="top:63%; left:62%;">
+  <img id="card-5" class="card-item" style="top:63%; left:76%;">
+  <img id="card-6" class="card-item" style="top:63%; left:90%;">
+
+  <img id="card-7" class="card-item" style="top:71%; left:56%; width:16%;"> <!-- 20 你右圖比較大 -->
+
+  <!-- 🟩【按鈕】ui/cancel.png ui/enter.png -->
+  <img src="ui/cancel.png" id="btn-cancel" onclick="handleCancel()">
+  <img src="ui/enter.png" id="btn-enter" onclick="handleEnter()">
+
+  <!-- 🟥【錯誤圖】ui/wrong.png -->
+  <div id="wrong-layer" onclick="resetAfterError()">
+    <img src="ui/wrong.png" id="wrong-img">
+  </div>
+
+  <!-- 🟩【規則頁開始】你有 ui/start.png（不是 images/ui/start.png） -->
+  <div id="rule-screen">
+    <img src="ui/start.png" id="start-btn" onclick="toggleRule(false)">
+  </div>
+</div>
+
+<!-- =========================================================
+     🟪【音效】你的 sounds 資料夾：bgmusic.mp3 / hurray.mp3 / wrong.mp3
+========================================================== -->
+<audio id="audio-bg" src="sounds/bgmusic.mp3" loop></audio>
+<audio id="audio-wrong" src="sounds/wrong.mp3"></audio>
+<audio id="audio-hurray" src="sounds/hurray.mp3"></audio>
+
+<script>
+  /* =========================================================
+     🟨【targets】依照 cards 資料夾檔名 13~20（8 張）
+     cards/ 內檔名：
+     thirteen.png fourteen.png fifteen.png sixteen.png
+     seventeen.png eighteen.png nineteen.png twenty.png
+  ========================================================== */
+  const GAME_CONFIG = {
+    targets: [
+      { word:"thirteen",  display:"thirteen",  img:"thirteen.png" },
+      { word:"fourteen",  display:"fourteen",  img:"fourteen.png" },
+      { word:"fifteen",   display:"fifteen",   img:"fifteen.png" },
+      { word:"sixteen",   display:"sixteen",   img:"sixteen.png" },
+      { word:"seventeen", display:"seventeen", img:"seventeen.png" },
+      { word:"eighteen",  display:"eighteen",  img:"eighteen.png" },
+      { word:"nineteen",  display:"nineteen",  img:"nineteen.png" },
+      { word:"twenty",    display:"twenty",    img:"twenty.png" }
+    ],
+
+    /* =========================================================
+       🟦【letters】依照你 letters 資料夾 15 個檔名：
+       e f g h i n o r s t u v w x y
+       我用你原本 4x4 位置，最後一格留空
+    ========================================================== */
+    letterLayout: [
+      { char:'e', t:0,  l:0  }, { char:'f', t:0,  l:25 }, { char:'g', t:0,  l:50 }, { char:'h', t:0,  l:75 },
+      { char:'i', t:25, l:0  }, { char:'n', t:25, l:25 }, { char:'o', t:25, l:50 }, { char:'r', t:25, l:75 },
+      { char:'s', t:50, l:0  }, { char:'t', t:50, l:25 }, { char:'u', t:50, l:50 }, { char:'v', t:50, l:75 },
+      { char:'w', t:75, l:0  }, { char:'x', t:75, l:25 }, { char:'y', t:75, l:50 }
+      // { char:'(empty)', t:75, l:75 }  ← 故意留空，避免找不到圖檔
+    ]
+  };
+
+  let currentIndex = 0;
+  let currentInput = "";
+  let isMuted = false;
+  let isErrorActive = false;
+  let isPaused = true;
+
+  /* 🟦 建立字母鍵盤 */
+  function initKeyboard(){
+    const container = document.getElementById('keyboard-area');
+    container.innerHTML = "";
+    GAME_CONFIG.letterLayout.forEach(item=>{
+      const img = new Image();
+      img.src = `letters/${item.char}.png`;  // ✅ images/letters → letters
+      img.className = 'letter-sticker';
+      img.style.top = item.t + '%';
+      img.style.left = item.l + '%';
+      img.onclick = ()=> typeLetter(item.char);
+      img.onerror = ()=> img.remove();
+      container.appendChild(img);
+    });
+  }
+
+  /* 🟩 更新卡片圖與高亮 */
+  function refreshStage(){
+    GAME_CONFIG.targets.forEach((item, idx)=>{
+      const el = document.getElementById(`card-${idx}`);
+      if(!el) return;
+      el.src = `cards/${item.img}`; // ✅ images/cards → cards
+      el.className = `card-item ${idx===currentIndex ? 'target-active' : 'target-inactive'}`;
+    });
+    updateDisplayText();
+  }
+
+  /* 🟨 答案顯示（底線） */
+  function updateDisplayText(){
+    const target = GAME_CONFIG.targets[currentIndex];
+    const template = target.display;
+    let resultHtml = "";
+    let inputPointer = 0;
+
+    for(const ch of template){
+      if(ch === " "){
+        resultHtml += "&nbsp;";
+      }else{
+        if(inputPointer < currentInput.length){
+          resultHtml += currentInput[inputPointer].toLowerCase();
+          inputPointer++;
+        }else{
+          resultHtml += "_";
+        }
+      }
+    }
+    document.getElementById('answer-display').innerHTML = resultHtml;
+  }
+
+  function typeLetter(char){
+    if(isPaused || isErrorActive){
+      if(isErrorActive) resetAfterError();
+      return;
+    }
+    const limit = GAME_CONFIG.targets[currentIndex].word.length;
+    if(currentInput.length < limit){
+      currentInput += char;
+      updateDisplayText();
+    }else{
+      showError();
+    }
+  }
+
+  function handleEnter(){
+    if(isPaused || isErrorActive) return;
+    const target = GAME_CONFIG.targets[currentIndex].word;
+    if(currentInput === "" || currentInput.toLowerCase() !== target.toLowerCase()){
+      showError();
+    }else{
+      showSuccess();
+    }
+  }
+
+  function handleCancel(){
+    if(isPaused || isErrorActive) return;
+    currentInput = "";
+    updateDisplayText();
+  }
+
+  /* 🟥錯誤：顯示 poop 圖 + 播 wrong */
+  function showError(){
+    isErrorActive = true;
+    document.getElementById('audio-bg').pause();
+    document.getElementById('audio-wrong').play();
+    document.getElementById('wrong-layer').style.display = 'flex';
+  }
+
+  function resetAfterError(){
+    isErrorActive = false;
+    document.getElementById('wrong-layer').style.display = 'none';
+    currentInput = "";
+    updateDisplayText();
+    if(!isMuted) document.getElementById('audio-bg').play();
+  }
+
+  /* ✅成功：播 hurray → 換下一個目標 */
+  function showSuccess(){
+    isPaused = true;
+    document.getElementById('audio-bg').pause();
+    document.getElementById('audio-hurray').play();
+
+    const activeCard = document.querySelector('.target-active');
+    if(activeCard){
+      activeCard.style.outline = "8px solid #00FF00";
+      activeCard.style.outlineOffset = "5px";
+    }
+
+    setTimeout(()=>{
+      if(activeCard) activeCard.style.outline = "none";
+      currentIndex++;
+      if(currentIndex >= GAME_CONFIG.targets.length) currentIndex = 0;
+      currentInput = "";
+      isPaused = false;
+      refreshStage();
+      if(!isMuted) document.getElementById('audio-bg').play();
+    }, 2500);
+  }
+
+  function toggleRule(show){
+    isPaused = show;
+    document.getElementById('rule-screen').style.display = show ? 'flex' : 'none';
+    if(show) document.getElementById('audio-bg').pause();
+    else if(!isMuted) document.getElementById('audio-bg').play();
+  }
+
+  function toggleMusic(){
+    isMuted = !isMuted;
+    const bg = document.getElementById('audio-bg');
+    document.getElementById('mute-overlay').style.display = isMuted ? 'block' : 'none';
+    if(isMuted) bg.pause();
+    else if(!isPaused) bg.play();
+  }
+
+  window.onload = ()=>{
+    initKeyboard();
+    refreshStage();
+  };
+</script>
+</body>
+</html>
