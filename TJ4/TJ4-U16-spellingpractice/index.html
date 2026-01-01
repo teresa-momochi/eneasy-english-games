@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spelling Game - Fixed UI Edition</title>
+    <style>
+        /* 整體規格鎖定 */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html { 
+            width: 100%; height: 100%; 
+            overflow: hidden; background-color: #000; 
+            font-family: Arial, sans-serif;
+        }
+
+        /* 16:9 容器 */
+        #game-stage {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 100vw; height: 56.25vw;
+            max-height: 100vh; max-width: 177.78vh;
+            transform: translate(-50%, -50%);
+            background-image: url('images/pages/bg.png');
+            background-size: cover;
+            background-position: center;
+        }
+
+        /* 工具區 (右上) */
+        .toolbar { position: absolute; top: 3%; right: 2%; display: flex; gap: 15px; z-index: 100; }
+        .tool-btn { width: 5.5vw; height: 5.5vw; cursor: pointer; position: relative; }
+        #mute-overlay { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            display: none; pointer-events: none;
+        }
+
+        /* 左側字母區 (視覺座標固定) */
+        #keyboard-area { position: absolute; top: 12%; left: 3%; width: 40%; height: 65%; }
+        .letter-sticker { 
+            position: absolute; width: 18%; cursor: pointer; 
+            transition: transform 0.1s; z-index: 10;
+        }
+        .letter-sticker:active { transform: scale(0.9); }
+
+        /* 右側顯示區 (答案框) */
+        #answer-display {
+            position: absolute; top: 15%; left: 45%; width: 50%; height: 13%;
+            background-image: url('images/ui/display_box.png'); /* 若無此圖可改用透明 */
+            background-size: 100% 100%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 3vw; color: #333; letter-spacing: 0.5vw; font-weight: bold;
+        }
+
+        /* 圖片區 (舞台道具) */
+        .card-item { position: absolute; width: 18%; transition: all 0.3s; z-index: 5; }
+        /* 目前目標指示：呼吸燈效果 */
+        .target-active { 
+            filter: drop-shadow(0 0 15px gold); 
+            animation: breathe 1.5s infinite ease-in-out;
+            z-index: 20; 
+        }
+        .target-inactive { opacity: 0.5; filter: grayscale(30%); }
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px gold); }
+            50% { transform: scale(1.05); filter: drop-shadow(0 0 25px gold); }
+        }
+
+        /* 操作按鈕 (左下) */
+        #btn-cancel { position: absolute; bottom: 5%; left: 2%; width: 18%; cursor: pointer; z-index: 30; }
+        #btn-enter { position: absolute; bottom: 5%; left: 22%; width: 18%; cursor: pointer; z-index: 30; }
+        
+        /* 角色 (右下) */
+        #character { position: absolute; bottom: 2%; right: 38%; width: 12%; pointer-events: none; }
+
+        /* 錯誤狀態 (問號大主角) */
+        #wrong-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.1); display: none;
+            justify-content: center; align-items: center; z-index: 999;
+        }
+        #wrong-img { width: 45%; }
+
+        /* 規則頁 */
+        #rule-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('images/pages/rule_spelling_game_16x9.png');
+            background-size: 100% 100%; z-index: 2000;
+            display: flex; justify-content: center; align-items: flex-end;
+        }
+        #start-btn { width: 15%; margin-bottom: 5%; cursor: pointer; }
+
+    </style>
+</head>
+<body>
+
+<div id="game-stage">
+    <div class="toolbar">
+        <img src="images/ui/exit.png" class="tool-btn" onclick="window.close()">
+        <img src="images/ui/rule.png" class="tool-btn" onclick="toggleRule(true)">
+        <div class="tool-btn" onclick="toggleMusic()">
+            <img src="images/ui/bgmusic.png" style="width:100%">
+            <svg id="mute-overlay" viewBox="0 0 100 100">
+                <line x1="10" y1="10" x2="90" y2="90" stroke="red" stroke-width="8" />
+            </svg>
+        </div>
+    </div>
+
+    <div id="keyboard-area"></div>
+
+    <div id="answer-display"></div>
+
+    <img id="card-0" class="card-item" style="top: 32%; left: 55%;">
+    <img id="card-1" class="card-item" style="top: 32%; left: 75%;">
+    <img id="card-2" class="card-item" style="top: 60%; left: 55%;">
+    <img id="card-3" class="card-item" style="top: 60%; left: 75%;">
+
+    <img src="images/ui/chef.png" id="character">
+
+    <img src="images/ui/cancel.png" id="btn-cancel" onclick="handleCancel()">
+    <img src="images/ui/enter.png" id="btn-enter" onclick="handleEnter()">
+
+    <div id="wrong-layer" onclick="resetAfterError()">
+        <img src="images/ui/wrong.png" id="wrong-img">
+    </div>
+
+    <div id="rule-screen">
+        <img src="images/ui/start.png" id="start-btn" onclick="toggleRule(false)">
+    </div>
+</div>
+
+<audio id="audio-bg" src="sounds/bgmusic.mp3" loop></audio>
+<audio id="audio-wrong" src="sounds/wrong.mp3"></audio>
+<audio id="audio-hurray" src="sounds/hurray.mp3"></audio>
+
+<script>
+    // 遊戲資料設定
+    const GAME_CONFIG = {
+        targets: [
+            { word: "bedroom", display: "bedroom", img: "bedroom.png" },
+            { word: "livingroom", display: "living room", img: "livingroom.png" },
+            { word: "kitchen", display: "kitchen", img: "kitchen.png" },
+            { word: "bathroom", display: "bathroom", img: "bathroom.png" }
+        ],
+        // 字母貼紙視覺座標 (對應截圖排版)
+        letterLayout: [
+            { char: 'i', t: 0, l: 0 }, { char: 'l', t: 0, l: 25 }, { char: 't', t: 0, l: 50 }, { char: 'g', t: 0, l: 75 },
+            { char: 'r', t: 25, l: 0 }, { char: 'n', t: 25, l: 25 }, { char: 'o', t: 25, l: 50 }, { char: 'c', t: 25, l: 75 },
+            { char: 'b', t: 50, l: 0 }, { char: 'm', t: 50, l: 25 }, { char: 'v', t: 50, l: 50 }, { char: 'e', t: 50, l: 75 },
+            { char: 'a', t: 75, l: 0 }, { char: 'h', t: 75, l: 25 }, { char: 'd', t: 75, l: 50 }, { char: 'k', t: 75, l: 75 }
+        ]
+    };
+
+    let currentIndex = 0;
+    let currentInput = "";
+    let isMuted = false;
+    let isErrorActive = false;
+    let isPaused = true;
+
+    // 初始化鍵盤
+    function initKeyboard() {
+        const container = document.getElementById('keyboard-area');
+        GAME_CONFIG.letterLayout.forEach(item => {
+            const img = new Image();
+            img.src = `images/letters/${item.char}.png`;
+            img.className = 'letter-sticker';
+            img.style.top = item.t + '%';
+            img.style.left = item.l + '%';
+            img.onclick = () => typeLetter(item.char);
+            // 處理圖片載入失敗 (若 PNG 不存在則完全不顯示)
+            img.onerror = () => img.remove();
+            container.appendChild(img);
+        });
+    }
+
+    // 更新畫面狀態
+    function refreshStage() {
+        GAME_CONFIG.targets.forEach((item, idx) => {
+            const el = document.getElementById(`card-${idx}`);
+            el.src = `images/cards/${item.img}`;
+            el.className = `card-item ${idx === currentIndex ? 'target-active' : 'target-inactive'}`;
+        });
+        updateDisplayText();
+    }
+
+    // 處理拼字顯示邏輯 (包含空格模板)
+    function updateDisplayText() {
+        const target = GAME_CONFIG.targets[currentIndex];
+        const template = target.display; // 例如 "living room"
+        let resultHtml = "";
+        let inputPointer = 0;
+
+        for (let char of template) {
+            if (char === " ") {
+                resultHtml += "&nbsp;";
+            } else {
+                if (inputPointer < currentInput.length) {
+                    resultHtml += currentInput[inputPointer].toLowerCase();
+                    inputPointer++;
+                } else {
+                    resultHtml += "_"; // 尚未輸入的部分用底線
+                }
+            }
+        }
+        document.getElementById('answer-display').innerHTML = resultHtml;
+    }
+
+    // 按下字母
+    function typeLetter(char) {
+        if (isPaused || isErrorActive) {
+            if (isErrorActive) resetAfterError();
+            return;
+        }
+
+        const limit = GAME_CONFIG.targets[currentIndex].word.length;
+        if (currentInput.length < limit) {
+            currentInput += char;
+            updateDisplayText();
+        } else {
+            showError(); // 溢出報錯
+        }
+    }
+
+    // ENTER 判定
+    function handleEnter() {
+        if (isPaused || isErrorActive) return;
+
+        const target = GAME_CONFIG.targets[currentIndex].word;
+        if (currentInput === "" || currentInput.toLowerCase() !== target.toLowerCase()) {
+            showError();
+        } else {
+            showSuccess();
+        }
+    }
+
+    function handleCancel() {
+        if (isPaused || isErrorActive) return;
+        currentInput = "";
+        updateDisplayText();
+    }
+
+    // 錯誤處理
+    function showError() {
+        isErrorActive = true;
+        document.getElementById('audio-bg').pause();
+        document.getElementById('audio-wrong').play();
+        document.getElementById('wrong-layer').style.display = 'flex';
+    }
+
+    function resetAfterError() {
+        isErrorActive = false;
+        document.getElementById('wrong-layer').style.display = 'none';
+        currentInput = "";
+        updateDisplayText();
+        if (!isMuted) document.getElementById('audio-bg').play();
+    }
+
+    // 正確處理
+    function showSuccess() {
+        isPaused = true;
+        document.getElementById('audio-bg').pause();
+        document.getElementById('audio-hurray').play();
+        
+        // 視覺回饋：綠色螢光效果
+        const activeCard = document.querySelector('.target-active');
+        activeCard.style.outline = "8px solid #00FF00";
+        activeCard.style.outlineOffset = "5px";
+
+        setTimeout(() => {
+            activeCard.style.outline = "none";
+            currentIndex++;
+            if (currentIndex >= GAME_CONFIG.targets.length) {
+                currentIndex = 0; // 重玩
+            }
+            currentInput = "";
+            isPaused = false;
+            refreshStage();
+            if (!isMuted) document.getElementById('audio-bg').play();
+        }, 3000);
+    }
+
+    // 介面控制
+    function toggleRule(show) {
+        isPaused = show;
+        document.getElementById('rule-screen').style.display = show ? 'flex' : 'none';
+        if (show) document.getElementById('audio-bg').pause();
+        else if (!isMuted) document.getElementById('audio-bg').play();
+    }
+
+    function toggleMusic() {
+        isMuted = !isMuted;
+        const bg = document.getElementById('audio-bg');
+        document.getElementById('mute-overlay').style.display = isMuted ? 'block' : 'none';
+        if (isMuted) bg.pause();
+        else if (!isPaused) bg.play();
+    }
+
+    // 啟動
+    window.onload = () => {
+        initKeyboard();
+        refreshStage();
+    };
+</script>
+
+</body>
+</html>
