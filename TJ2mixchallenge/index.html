@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>Make a Sentence - 老師示範模式版</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 0;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; background-color: #1a1a1a;
+            overflow: hidden; font-family: Arial, sans-serif;
+        }
+
+        /* 遊戲舞台，背景使用 images/bg.png */
+        #game-stage {
+            width: 1280px; height: 720px;
+            background-image: url('images/bg.png'); 
+            background-size: cover;
+            background-position: center;
+            position: relative; border: 5px solid #333;
+        }
+
+        .header { position: absolute; top: 30px; width: 100%; display: flex; justify-content: center; align-items: center; }
+        .title-box { 
+            background: #fde047; padding: 10px 60px; border-radius: 40px; 
+            font-size: 50px; font-weight: bold; border: 5px solid #000; 
+        }
+
+        .top-icons { position: absolute; right: 50px; top: 30px; display: flex; gap: 20px; align-items: center; }
+        #heart-icon { width: 80px; display: none; }
+        #bgm-btn { width: 70px; cursor: pointer; }
+        #mode-toggle { width: 100px; cursor: pointer; }
+
+        #question-img {
+            position: absolute; left: 80px; top: 180px;
+            width: 380px; height: 350px; object-fit: contain;
+            background: white; border: 10px solid #fff; border-radius: 10px;
+        }
+
+        .answer-area { position: absolute; right: 100px; top: 250px; display: flex; gap: 30px; }
+        .frame-box {
+            width: 240px; height: 110px; background: white;
+            border: 6px solid #fb923c; border-radius: 20px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 42px; font-weight: bold; position: relative;
+        }
+        .frame-box.active { border-color: #3b82f6; border-width: 10px; }
+        .frame-box.locked { background-color: #f1f5f9; border-color: #94a3b8; color: #64748b; }
+        
+        .finger { position: absolute; bottom: -120px; width: 110px; cursor: pointer; }
+
+        .bottom-controls { 
+            position: absolute; bottom: 50px; width: 100%; 
+            display: flex; justify-content: space-between; padding: 0 100px; align-items: center; 
+        }
+        #enter-btn { width: 220px; cursor: pointer; position: absolute; left: 50%; transform: translateX(-50%); }
+        
+        /* NEXT 按鈕位置調整 */
+        #next-btn { 
+            position: absolute; left: 100px; bottom: 150px;
+            width: 160px; cursor: pointer; display: none; z-index: 50;
+        }
+        #trash-btn { width: 130px; cursor: pointer; }
+
+        #wrong-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4); display: none;
+            justify-content: center; align-items: center; z-index: 100;
+            pointer-events: none;
+        }
+
+        #play-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9); display: none;
+            flex-direction: column; justify-content: center; align-items: center; z-index: 200;
+        }
+        #play-btn-img { width: 200px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div id="game-stage">
+    <div class="header">
+        <div class="title-box">Make a Sentence</div>
+        <div class="top-icons">
+            <img src="icons/heart.png" id="heart-icon">
+            <img src="icons/bgmusic.png" id="bgm-btn" onclick="toggleBGM()">
+            <img src="icons/off.png" id="mode-toggle" onclick="toggleMode()">
+        </div>
+    </div>
+
+    <img src="images/cat.png" id="question-img">
+
+    <div class="answer-area">
+        <div id="f1" class="frame-box active"><span class="txt"></span><img src="icons/finger1.png" class="finger" onclick="pick(1)"></div>
+        <div id="f2" class="frame-box"><span class="txt"></span><img src="icons/finger2.png" class="finger" onclick="pick(2)"></div>
+        <div id="f3" class="frame-box"><span class="txt"></span><img src="icons/finger3.png" class="finger" onclick="pick(3)"></div>
+    </div>
+
+    <img src="icons/next.png" id="next-btn" onclick="goNext()">
+
+    <div class="bottom-controls">
+        <div style="width: 160px;"></div> <img src="icons/enter.png" id="enter-btn" onclick="pressEnter()">
+        <img src="icons/trash.png" id="trash-btn" onclick="resetCurrentAttempt()">
+    </div>
+
+    <div id="wrong-overlay">
+        <img src="images/wrong.png" width="450">
+    </div>
+
+    <div id="play-screen">
+        <h1 style="font-size: 60px;">WELL DONE!</h1>
+        <img src="icons/play.png" id="play-btn-img" onclick="restartGame()">
+        <p style="font-size: 24px; font-weight: bold;">PLAY AGAIN</p>
+    </div>
+</div>
+
+<audio id="snd-bg" src="sounds/bgmusic.mp3" loop></audio>
+<audio id="snd-ok" src="sounds/correct.mp3"></audio>
+<audio id="snd-no" src="sounds/wrong.mp3"></audio>
+
+<script>
+    const quizData = [
+        { file: "cat.png", ans: [["It", "is", "a cat"]] },
+        { file: "dog.png", ans: [["It", "is", "a dog"]] },
+        { file: "boy.png", ans: [["I", "am", "a boy"], ["I", "am", "Nick"]] },
+        { file: "dad.png", ans: [["He", "is", "Dad"], ["He", "is", "Nick"]] },
+        { file: "mom.png", ans: [["She", "is", "Mom"], ["She", "is", "Judy"]] },
+        { file: "you.png", ans: [["You", "are", "Nick"], ["You", "are", "a boy"]] },
+        { file: "she.png", ans: [["She", "is", "Judy"]] }
+    ];
+
+    const wordList = { 1: ["He", "She", "I", "You", "It"], 2: ["am", "are", "is"], 3: ["a dog", "a cat", "Dad", "Mom", "Nick", "Judy", "a boy"] };
+    let qIdx = 0, curF = 1, picks = [-1, -1, -1], locked = [false, false, false], isErr = false, isTMode = false;
+
+    function pick(f) {
+        if (isErr || locked[f-1] || curF !== f) return;
+        picks[f-1] = (picks[f-1] + 1) % wordList[f].length;
+        render();
+    }
+
+    function render() {
+        for(let i=1; i<=3; i++) {
+            document.querySelector(`#f${i} .txt`).innerText = picks[i-1] === -1 ? "" : wordList[i][picks[i-1]];
+        }
+    }
+
+    function pressEnter() {
+        if (isErr || picks[curF-1] === -1) return;
+        if (curF < 3) {
+            lock(curF); curF++;
+            document.getElementById(`f${curF}`).classList.add('active');
+        } else {
+            lock(3); checkAnswer();
+        }
+    }
+
+    function lock(n) {
+        locked[n-1] = true;
+        const box = document.getElementById(`f${n}`);
+        box.classList.add('locked'); box.classList.remove('active');
+    }
+
+    function checkAnswer() {
+        const user = [wordList[1][picks[0]], wordList[2][picks[1]], wordList[3][picks[2]]];
+        const win = quizData[qIdx].ans.some(a => a[0] === user[0] && a[1] === user[1] && a[2] === user[2]);
+        if (win) {
+            if (!isTMode) document.getElementById('snd-ok').play();
+            document.getElementById('heart-icon').style.display = "block";
+            document.getElementById('next-btn').style.display = "block";
+        } else {
+            isErr = true; 
+            document.getElementById('snd-no').play();
+            const monster = document.getElementById('wrong-overlay');
+            monster.style.display = "flex";
+            setTimeout(() => { monster.style.display = "none"; isErr = false; }, 2000); 
+        }
+    }
+
+    function resetCurrentAttempt() {
+        isErr = false; curF = 1; picks = [-1, -1, -1]; locked = [false, false, false];
+        document.getElementById('wrong-overlay').style.display = "none";
+        document.getElementById('heart-icon').style.display = "none";
+        // 只有在非示範模式下才隱藏 NEXT
+        if (!isTMode) document.getElementById('next-btn').style.display = "none";
+        for(let i=1; i<=3; i++) {
+            const f = document.getElementById(`f${i}`);
+            f.classList.remove('locked', 'active');
+        }
+        document.getElementById('f1').classList.add('active');
+        render();
+    }
+
+    function goNext() {
+        if (qIdx < quizData.length - 1) { qIdx++; loadQuestion(); }
+        else { document.getElementById('play-screen').style.display = "flex"; }
+    }
+
+    function loadQuestion() {
+        document.getElementById('question-img').src = "images/" + quizData[qIdx].file;
+        resetCurrentAttempt();
+    }
+
+    function restartGame() {
+        qIdx = 0; document.getElementById('play-screen').style.display = "none";
+        loadQuestion();
+    }
+
+    function toggleBGM() {
+        const bgm = document.getElementById('snd-bg');
+        bgm.paused ? bgm.play() : bgm.pause();
+    }
+
+    function toggleMode() {
+        isTMode = !isTMode;
+        const toggleBtn = document.getElementById('mode-toggle');
+        const nextBtn = document.getElementById('next-btn');
+        
+        if (isTMode) {
+            toggleBtn.src = "icons/on.png";  // 切換到 ON
+            nextBtn.style.display = "block"; // 示範模式直接顯示 NEXT
+        } else {
+            toggleBtn.src = "icons/off.png"; // 切換到 OFF
+            nextBtn.style.display = "none";  // 一般模式隱藏 NEXT (直到答對)
+        }
+    }
+
+    window.onload = loadQuestion;
+</script>
+</body>
+</html>
