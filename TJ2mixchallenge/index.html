@@ -1,232 +1,444 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <title>Make a Sentence - 老師示範模式版</title>
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            margin: 0; padding: 0;
-            display: flex; justify-content: center; align-items: center;
-            height: 100vh; background-color: #1a1a1a;
-            overflow: hidden; font-family: Arial, sans-serif;
-        }
+  <meta charset="UTF-8" />
+  <meta name="google" content="notranslate">
+  <title>Make a Sentence</title>
 
-        /* 遊戲舞台，背景使用 images/bg.png */
-        #game-stage {
-            width: 1280px; height: 720px;
-            background-image: url('images/bg.png'); 
-            background-size: cover;
-            background-position: center;
-            position: relative; border: 5px solid #333;
-        }
+  <style>
+    /* =========================
+       0) 固定舞台：1280 x 720
+       ========================= */
+    body{
+      margin:0;
+      background:#333;
+      height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      font-family: Arial, "Microsoft JhengHei", sans-serif;
+    }
+    #game-stage{
+      position:relative;
+      width:1280px;
+      height:720px;
+      background:url('images/bg.png') no-repeat center;
+      background-size:cover;
+      overflow:hidden;
+    }
 
-        .header { position: absolute; top: 30px; width: 100%; display: flex; justify-content: center; align-items: center; }
-        .title-box { 
-            background: #fde047; padding: 10px 60px; border-radius: 40px; 
-            font-size: 50px; font-weight: bold; border: 5px solid #000; 
-        }
+    /* =========================
+       1) Header / Toggle / Music
+       ========================= */
+    .header-title{
+      position:absolute;
+      top:40px;
+      left:50%;
+      transform:translateX(-50%);
+      background:#ffeb3b;
+      padding:10px 60px;
+      border-radius:30px;
+      font-size:56px;
+      font-weight:800;
+      z-index:10;
+      user-select:none;
+    }
+    #mode-toggle{
+      position:absolute;
+      top:20px;
+      right:20px;
+      width:100px;
+      cursor:pointer;
+      z-index:100;
+      user-select:none;
+    }
+    #btn-bgmusic{
+      position:absolute;
+      top:20px;
+      right:140px;
+      width:60px;
+      cursor:pointer;
+      z-index:100;
+      user-select:none;
+    }
 
-        .top-icons { position: absolute; right: 50px; top: 30px; display: flex; gap: 20px; align-items: center; }
-        #heart-icon { width: 80px; display: none; }
-        #bgm-btn { width: 70px; cursor: pointer; }
-        #mode-toggle { width: 100px; cursor: pointer; }
+    /* =========================
+       2) 題目圖片
+       ========================= */
+    #img-question{
+      position:absolute;
+      top:230px;
+      left:60px;
+      width:280px;
+      height:280px;
+      object-fit:contain;
+      background:#fff;
+      border:8px solid #fff;
+      border-radius:20px;
+      user-select:none;
+    }
 
-        #question-img {
-            position: absolute; left: 80px; top: 180px;
-            width: 380px; height: 350px; object-fit: contain;
-            background: white; border: 10px solid #fff; border-radius: 10px;
-        }
+    /* =========================
+       3) 答案框 + finger
+       ========================= */
+    .answer-container{
+      position:absolute;
+      top:350px;
+      left:380px;
+      display:flex;
+      gap:15px;
+    }
+    .frame-box{
+      position:relative;
+      width:280px;
+      text-align:center;
+      user-select:none;
+    }
+    .word-display{
+      position:absolute;
+      top:5px;
+      left:5px;
+      width:270px;
+      height:85px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      pointer-events:none; 
+    }
+    .word-display img{
+      max-width:90%;
+      max-height:80%;
+      user-select:none;
+      -webkit-user-drag:none;
+    }
+    .finger-btn{
+      margin-top:15px;
+      cursor:pointer;
+      width:100px;
+      user-select:none;
+      -webkit-user-drag:none;
+      transition: opacity 0.3s;
+    }
 
-        .answer-area { position: absolute; right: 100px; top: 250px; display: flex; gap: 30px; }
-        .frame-box {
-            width: 240px; height: 110px; background: white;
-            border: 6px solid #fb923c; border-radius: 20px;
-            display: flex; justify-content: center; align-items: center;
-            font-size: 42px; font-weight: bold; position: relative;
-        }
-        .frame-box.active { border-color: #3b82f6; border-width: 10px; }
-        .frame-box.locked { background-color: #f1f5f9; border-color: #94a3b8; color: #64748b; }
-        
-        .finger { position: absolute; bottom: -120px; width: 110px; cursor: pointer; }
+    .finger-disabled{
+      opacity:0.35;
+      filter:grayscale(1);
+      cursor:not-allowed;
+    }
 
-        .bottom-controls { 
-            position: absolute; bottom: 50px; width: 100%; 
-            display: flex; justify-content: space-between; padding: 0 100px; align-items: center; 
-        }
-        #enter-btn { width: 220px; cursor: pointer; position: absolute; left: 50%; transform: translateX(-50%); }
-        
-        /* NEXT 按鈕位置調整 */
-        #next-btn { 
-            position: absolute; left: 100px; bottom: 150px;
-            width: 160px; cursor: pointer; display: none; z-index: 50;
-        }
-        #trash-btn { width: 130px; cursor: pointer; }
+    /* =========================
+       4) 下方控制按鈕
+       ========================= */
+    .controls{
+      position:absolute;
+      bottom:30px;
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:60px;
+      z-index:50;
+      user-select:none;
+    }
+    .icon-btn{
+      cursor:pointer;
+      height:100px;
+      -webkit-user-drag:none;
+    }
+    .icon-btn.disabled{
+      filter: grayscale(1);
+      opacity: 0.45;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .icon-btn.bright{
+      filter: drop-shadow(0 0 20px #ffff00);
+    }
 
-        #wrong-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.4); display: none;
-            justify-content: center; align-items: center; z-index: 100;
-            pointer-events: none;
-        }
+    /* =========================
+       5) 錯誤怪獸層
+       ========================= */
+    #wrong-overlay{
+      position:absolute;
+      top:0; left:0;
+      width:100%; height:100%;
+      background: rgba(0,0,0,0.55);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:200;
+    }
+    #wrong-overlay img{
+      max-height:85%;
+      user-select:none;
+      -webkit-user-drag:none;
+    }
 
-        #play-screen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.9); display: none;
-            flex-direction: column; justify-content: center; align-items: center; z-index: 200;
-        }
-        #play-btn-img { width: 200px; cursor: pointer; }
-    </style>
+    #step-hint{
+      position:absolute;
+      top:170px;
+      left:60px;
+      padding:6px 12px;
+      border-radius:12px;
+      background:rgba(0,0,0,0.55);
+      color:#fff;
+      font-size:18px;
+      z-index:15;
+      user-select:none;
+    }
+  </style>
 </head>
+
 <body>
+  <div id="game-stage">
+    <div class="header-title">Make a Sentence</div>
 
-<div id="game-stage">
-    <div class="header">
-        <div class="title-box">Make a Sentence</div>
-        <div class="top-icons">
-            <img src="icons/heart.png" id="heart-icon">
-            <img src="icons/bgmusic.png" id="bgm-btn" onclick="toggleBGM()">
-            <img src="icons/off.png" id="mode-toggle" onclick="toggleMode()">
-        </div>
+    <img src="icons/bgmusic.png" id="btn-bgmusic" alt="bgmusic" />
+    <img src="icons/off.png" id="mode-toggle" alt="mode" />
+    <div id="step-hint">Step: 1 (Frame1)</div>
+
+    <img src="images/cat.png" id="img-question" alt="question" />
+
+    <div class="answer-container">
+      <div class="frame-box">
+        <img src="images/answerframe/answerframe1.png" style="width:100%" alt="frame1">
+        <div id="slot-1" class="word-display"></div>
+        <img src="icons/finger1.png" id="finger-1" class="finger-btn" alt="finger1">
+      </div>
+
+      <div class="frame-box">
+        <img src="images/answerframe/answerframe2.png" style="width:100%" alt="frame2">
+        <div id="slot-2" class="word-display"></div>
+        <img src="icons/finger2.png" id="finger-2" class="finger-btn" alt="finger2">
+      </div>
+
+      <div class="frame-box">
+        <img src="images/answerframe/answerframe3.png" style="width:100%" alt="frame3">
+        <div id="slot-3" class="word-display"></div>
+        <img src="icons/finger3.png" id="finger-3" class="finger-btn" alt="finger3">
+      </div>
     </div>
 
-    <img src="images/cat.png" id="question-img">
-
-    <div class="answer-area">
-        <div id="f1" class="frame-box active"><span class="txt"></span><img src="icons/finger1.png" class="finger" onclick="pick(1)"></div>
-        <div id="f2" class="frame-box"><span class="txt"></span><img src="icons/finger2.png" class="finger" onclick="pick(2)"></div>
-        <div id="f3" class="frame-box"><span class="txt"></span><img src="icons/finger3.png" class="finger" onclick="pick(3)"></div>
-    </div>
-
-    <img src="icons/next.png" id="next-btn" onclick="goNext()">
-
-    <div class="bottom-controls">
-        <div style="width: 160px;"></div> <img src="icons/enter.png" id="enter-btn" onclick="pressEnter()">
-        <img src="icons/trash.png" id="trash-btn" onclick="resetCurrentAttempt()">
+    <div class="controls">
+      <img src="icons/next.png" id="btn-next" class="icon-btn disabled" alt="next">
+      <img src="icons/enter.png" id="btn-enter" class="icon-btn" alt="enter">
+      <img src="icons/trash.png" id="btn-trash" class="icon-btn" alt="trash">
     </div>
 
     <div id="wrong-overlay">
-        <img src="images/wrong.png" width="450">
+      <img src="images/wrong.png" alt="wrong">
     </div>
+  </div>
 
-    <div id="play-screen">
-        <h1 style="font-size: 60px;">WELL DONE!</h1>
-        <img src="icons/play.png" id="play-btn-img" onclick="restartGame()">
-        <p style="font-size: 24px; font-weight: bold;">PLAY AGAIN</p>
-    </div>
-</div>
+  <audio id="snd-bg" src="sounds/bgmusic.mp3" loop></audio>
+  <audio id="snd-wrong" src="sounds/wrong.mp3"></audio>
+  <audio id="snd-correct" src="sounds/correct.mp3"></audio>
 
-<audio id="snd-bg" src="sounds/bgmusic.mp3" loop></audio>
-<audio id="snd-ok" src="sounds/correct.mp3"></audio>
-<audio id="snd-no" src="sounds/wrong.mp3"></audio>
-
-<script>
-    const quizData = [
-        { file: "cat.png", ans: [["It", "is", "a cat"]] },
-        { file: "dog.png", ans: [["It", "is", "a dog"]] },
-        { file: "boy.png", ans: [["I", "am", "a boy"], ["I", "am", "Nick"]] },
-        { file: "dad.png", ans: [["He", "is", "Dad"], ["He", "is", "Nick"]] },
-        { file: "mom.png", ans: [["She", "is", "Mom"], ["She", "is", "Judy"]] },
-        { file: "you.png", ans: [["You", "are", "Nick"], ["You", "are", "a boy"]] },
-        { file: "she.png", ans: [["She", "is", "Judy"]] }
+  <script>
+    /* =========================================================
+       題庫與路徑設定
+       ========================================================= */
+    const questions = [
+      { img: "cat.png", ans: [["it","is","a_cat"]] },
+      { img: "dog.png", ans: [["it","is","a_dog"]] },
+      { img: "boy.png", ans: [["i","am","a_boy"], ["i","am","nick"]] },
+      { img: "dad.png", ans: [["he","is","dad"], ["he","is","nick"]] },
+      { img: "mom.png", ans: [["she","is","mom"], ["she","is","judy"]] },
+      { img: "you.png", ans: [["you","are","nick"], ["you","are","a_boy"]] },
+      { img: "she.png", ans: [["she","is","judy"]] }
     ];
 
-    const wordList = { 1: ["He", "She", "I", "You", "It"], 2: ["am", "are", "is"], 3: ["a dog", "a cat", "Dad", "Mom", "Nick", "Judy", "a boy"] };
-    let qIdx = 0, curF = 1, picks = [-1, -1, -1], locked = [false, false, false], isErr = false, isTMode = false;
+    const bank = {
+      1: ["i","you","he","she","it"],
+      2: ["am","are","is"],
+      3: ["a_boy","a_cat","a_dog","nick","judy","dad","mom"]
+    };
 
-    function pick(f) {
-        if (isErr || locked[f-1] || curF !== f) return;
-        picks[f-1] = (picks[f-1] + 1) % wordList[f].length;
-        render();
+    const pathMap = {
+      1: "images/answerframe/options.frame1/",
+      2: "images/answerframe/options.frame2/",
+      3: "images/answerframe/options.frame3/"
+    };
+
+    /* =========================================================
+       遊戲狀態
+       ========================================================= */
+    let qIdx = 0;
+    let isTeacherMode = false;
+    let isLocked = false;
+    let step = 1;
+    let passed = false;
+    let selections = [null,null,null];
+
+    const elQuestion = document.getElementById("img-question");
+    const elWrongOverlay = document.getElementById("wrong-overlay");
+    const elStepHint = document.getElementById("step-hint");
+    const elNext = document.getElementById("btn-next");
+    const elEnter = document.getElementById("btn-enter");
+    const elTrash = document.getElementById("btn-trash");
+    const elFinger1 = document.getElementById("finger-1");
+    const elFinger2 = document.getElementById("finger-2");
+    const elFinger3 = document.getElementById("finger-3");
+    const sndBg = document.getElementById("snd-bg");
+    const sndWrong = document.getElementById("snd-wrong");
+    const sndCorrect = document.getElementById("snd-correct");
+    const elModeToggle = document.getElementById("mode-toggle");
+    const elBgmBtn = document.getElementById("btn-bgmusic");
+
+    /* =========================================================
+       功能函數
+       ========================================================= */
+    function setSlotImage(frameNo, token){
+      const slot = document.getElementById(`slot-${frameNo}`);
+      slot.innerHTML = token ? `<img src="${pathMap[frameNo]}word_${token}.png" alt="${token}">` : "";
     }
 
-    function render() {
-        for(let i=1; i<=3; i++) {
-            document.querySelector(`#f${i} .txt`).innerText = picks[i-1] === -1 ? "" : wordList[i][picks[i-1]];
+    function clearSlots(){
+      selections = [null,null,null];
+      for(let i=1;i<=3;i++) setSlotImage(i, null);
+    }
+
+    function updateStepHint(){
+      const map = {1:"Step: 1 (Frame1)", 2:"Step: 2 (Frame2)", 3:"Step: 3 (Frame3)"};
+      elStepHint.textContent = map[step] || "Step";
+    }
+
+    function updateFingerState(){
+      const fingers = [
+        {el: elFinger1, no: 1},
+        {el: elFinger2, no: 2},
+        {el: elFinger3, no: 3}
+      ];
+      fingers.forEach(({el, no})=>{
+        const enabled = isTeacherMode ? true : (no === step);
+        if(!enabled || isLocked){
+          el.classList.add("finger-disabled");
+        }else{
+          el.classList.remove("finger-disabled");
         }
+      });
     }
 
-    function pressEnter() {
-        if (isErr || picks[curF-1] === -1) return;
-        if (curF < 3) {
-            lock(curF); curF++;
-            document.getElementById(`f${curF}`).classList.add('active');
-        } else {
-            lock(3); checkAnswer();
+    function updateNextState(){
+      if(isTeacherMode || passed){
+        elNext.classList.remove("disabled");
+        elNext.classList.add("bright");
+      }else{
+        elNext.classList.add("disabled");
+        elNext.classList.remove("bright");
+      }
+    }
+
+    function updateUI(){
+      updateStepHint();
+      updateFingerState();
+      updateNextState();
+    }
+
+    function loadQuestion(){
+      isLocked = false;
+      passed = false;
+      step = 1;
+      clearSlots();
+      elWrongOverlay.style.display = "none";
+      elQuestion.src = `images/${questions[qIdx].img}`;
+      updateUI();
+    }
+
+    function rotate(frameNo){
+      if(isLocked) return;
+      if(!isTeacherMode && frameNo !== step) return;
+      const list = bank[frameNo];
+      const idxNow = selections[frameNo - 1];
+      const nextIdx = (idxNow === null) ? 0 : (idxNow + 1) % list.length;
+      selections[frameNo - 1] = nextIdx;
+      setSlotImage(frameNo, list[nextIdx]);
+    }
+
+    /* 核心修正：錯誤怪獸 1.5秒消失但維持鎖定 */
+    function checkAnswer(){
+      if(isLocked || isTeacherMode) return;
+
+      const user = selections.map((s, i)=> s !== null ? bank[i+1][s] : null);
+      if(step === 1 && !user[0]) return;
+      if(step === 2 && (!user[0] || !user[1])) return;
+      if(step === 3 && (!user[0] || !user[1] || !user[2])) return;
+
+      const ansList = questions[qIdx].ans;
+      let ok = false;
+
+      if(step === 1){
+        ok = ansList.some(a => a[0] === user[0]);
+        if(ok) step = 2;
+      }else if(step === 2){
+        ok = ansList.some(a => a[0] === user[0] && a[1] === user[1]);
+        if(ok) step = 3;
+      }else if(step === 3){
+        ok = ansList.some(a => a[0] === user[0] && a[1] === user[1] && a[2] === user[2]);
+        if(ok){
+          passed = true;
+          sndCorrect.currentTime = 0;
+          sndCorrect.play().catch(()=>{});
         }
+      }
+
+      if(!ok){
+        isLocked = true;
+        elWrongOverlay.style.display = "flex";
+        sndWrong.currentTime = 0;
+        sndWrong.play().catch(()=>{});
+
+        // 1.5秒後怪獸自動退場，但不解鎖 isLocked
+        setTimeout(() => {
+          elWrongOverlay.style.display = "none";
+          updateUI();
+        }, 1500);
+      }
+      updateUI();
     }
 
-    function lock(n) {
-        locked[n-1] = true;
-        const box = document.getElementById(`f${n}`);
-        box.classList.add('locked'); box.classList.remove('active');
+    function clearAll(){
+      isLocked = false;
+      passed = false;
+      step = 1;
+      clearSlots();
+      elWrongOverlay.style.display = "none";
+      updateUI();
     }
 
-    function checkAnswer() {
-        const user = [wordList[1][picks[0]], wordList[2][picks[1]], wordList[3][picks[2]]];
-        const win = quizData[qIdx].ans.some(a => a[0] === user[0] && a[1] === user[1] && a[2] === user[2]);
-        if (win) {
-            if (!isTMode) document.getElementById('snd-ok').play();
-            document.getElementById('heart-icon').style.display = "block";
-            document.getElementById('next-btn').style.display = "block";
-        } else {
-            isErr = true; 
-            document.getElementById('snd-no').play();
-            const monster = document.getElementById('wrong-overlay');
-            monster.style.display = "flex";
-            setTimeout(() => { monster.style.display = "none"; isErr = false; }, 2000); 
-        }
+    function toggleMode(){
+      isTeacherMode = !isTeacherMode;
+      elModeToggle.src = isTeacherMode ? "icons/on.png" : "icons/off.png";
+      updateUI();
     }
 
-    function resetCurrentAttempt() {
-        isErr = false; curF = 1; picks = [-1, -1, -1]; locked = [false, false, false];
-        document.getElementById('wrong-overlay').style.display = "none";
-        document.getElementById('heart-icon').style.display = "none";
-        // 只有在非示範模式下才隱藏 NEXT
-        if (!isTMode) document.getElementById('next-btn').style.display = "none";
-        for(let i=1; i<=3; i++) {
-            const f = document.getElementById(`f${i}`);
-            f.classList.remove('locked', 'active');
-        }
-        document.getElementById('f1').classList.add('active');
-        render();
+    function toggleMusic(){
+      sndBg.paused ? sndBg.play().catch(()=>{}) : sndBg.pause();
     }
 
-    function goNext() {
-        if (qIdx < quizData.length - 1) { qIdx++; loadQuestion(); }
-        else { document.getElementById('play-screen').style.display = "flex"; }
-    }
-
-    function loadQuestion() {
-        document.getElementById('question-img').src = "images/" + quizData[qIdx].file;
-        resetCurrentAttempt();
-    }
-
-    function restartGame() {
-        qIdx = 0; document.getElementById('play-screen').style.display = "none";
+    function goNext(){
+      if(!(isTeacherMode || passed)) return;
+      if(qIdx < questions.length - 1){
+        qIdx++;
         loadQuestion();
+      }else{
+        alert("恭喜完成所有題目！");
+        qIdx = 0;
+        loadQuestion();
+      }
     }
 
-    function toggleBGM() {
-        const bgm = document.getElementById('snd-bg');
-        bgm.paused ? bgm.play() : bgm.pause();
-    }
+    elFinger1.addEventListener("click", ()=> rotate(1));
+    elFinger2.addEventListener("click", ()=> rotate(2));
+    elFinger3.addEventListener("click", ()=> rotate(3));
+    elEnter.addEventListener("click", checkAnswer);
+    elTrash.addEventListener("click", clearAll);
+    elNext.addEventListener("click", goNext);
+    elModeToggle.addEventListener("click", toggleMode);
+    elBgmBtn.addEventListener("click", toggleMusic);
 
-    function toggleMode() {
-        isTMode = !isTMode;
-        const toggleBtn = document.getElementById('mode-toggle');
-        const nextBtn = document.getElementById('next-btn');
-        
-        if (isTMode) {
-            toggleBtn.src = "icons/on.png";  // 切換到 ON
-            nextBtn.style.display = "block"; // 示範模式直接顯示 NEXT
-        } else {
-            toggleBtn.src = "icons/off.png"; // 切換到 OFF
-            nextBtn.style.display = "none";  // 一般模式隱藏 NEXT (直到答對)
-        }
-    }
-
-    window.onload = loadQuestion;
-</script>
+    window.addEventListener("load", loadQuestion);
+  </script>
 </body>
 </html>
