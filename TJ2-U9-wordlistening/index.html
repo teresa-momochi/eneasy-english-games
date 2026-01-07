@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>Apple Catch - 聽力練習遊戲</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        /* 固定 16:9 舞台 */
+        #game-container {
+            position: relative;
+            width: 1280px;
+            height: 720px;
+            background-image: url('images/bg.png');
+            background-size: cover;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+        canvas {
+            display: block;
+        }
+        /* 說明頁圖層 */
+        #instruction-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7) url('images/instruction_apple_catch_for_kids.png') no-repeat center;
+            background-size: contain;
+            z-index: 100;
+            cursor: pointer;
+        }
+        /* UI 按鈕 (過關後顯示) */
+        #ui-layer {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: none;
+            gap: 20px;
+            z-index: 50;
+        }
+        .btn {
+            width: 80px;
+            height: 80px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: scale(1.1); }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="instruction-screen"></div>
+    
+    <canvas id="gameCanvas" width="1280" height="720"></canvas>
+
+    <div id="ui-layer">
+        <img src="icons/again.png" class="btn" id="btn-again">
+        <img src="icons/exit.png" class="btn" id="btn-exit" onclick="window.close();">
+    </div>
+</div>
+
+<script>
+/**
+ * 遊戲規格 v2.3 核心邏輯
+ */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const instruction = document.getElementById('instruction-screen');
+const uiLayer = document.getElementById('ui-layer');
+
+// 1. 設定
+const words = ['bin', 'nap', 'nut', 'den', 'pan', 'net', 'one', 'two', 'three', 'four'];
+let collectedUniqueWords = new Set();
+let gameActive = false;
+
+// 2. 資源載入
+const assets = {
+    basket: new Image(),
+    bg: new Image(),
+    apples: {},
+    counts: {}
+};
+assets.basket.src = 'images/basket.png';
+
+words.forEach(word => {
+    assets.apples[word] = new Image();
+    assets.apples[word].src = `images/apple_${word}.png`;
+});
+
+for(let i=1; i<=10; i++) {
+    assets.counts[i] = new Image();
+    assets.counts[i].src = `images/count${i}.png`;
+}
+
+// 3. 物件狀態
+let basket = { x: 540, y: 550, w: 200, h: 120 };
+let fallingApples = [];
+let spawnTimer = 0;
+
+// 4. 開始遊戲
+instruction.addEventListener('click', () => {
+    instruction.style.display = 'none';
+    startGame();
+});
+
+function startGame() {
+    collectedUniqueWords.clear();
+    fallingApples = [];
+    gameActive = true;
+    uiLayer.style.display = 'none';
+    requestAnimationFrame(update);
+}
+
+// 5. 核心邏輯：碰撞偵測 (方向式 Hitbox)
+function checkCollision(apple, basket) {
+    // 蘋果底部位置
+    const appleBottom = apple.y + apple.h;
+    const appleCenter = apple.x + apple.w/2;
+
+    // 判斷條件：
+    // 1. 蘋果底部剛好接觸到籃子口 (y 座標範圍)
+    // 2. 蘋果中心點在籃子寬度範圍內
+    // 3. 必須是「由上而下」的接觸 (apple.y < basket.y)
+    if (appleBottom >= basket.y && 
+        appleBottom <= basket.y + 20 && 
+        appleCenter > basket.x && 
+        appleCenter < basket.x + basket.w) {
+        return true;
+    }
+    return false;
+}
+
+// 6. 遊戲循環
+function update() {
+    if (!gameActive) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 繪製籃子 (隨滑鼠移動)
+    ctx.drawImage(assets.basket, basket.x, basket.y, basket.w, basket.h);
+
+    // 處理蘋果掉落
+    spawnTimer++;
+    if (spawnTimer > 80) { // 控制掉落頻率
+        const randomWord = words[Math.floor(Math.random() * words.length)];
+        fallingApples.push({
+            word: randomWord,
+            x: Math.random() * (canvas.width - 100),
+            y: -100,
+            w: 100,
+            h: 100,
+            speed: 3 + Math.random() * 2
+        });
+        spawnTimer = 0;
+    }
+
+    for (let i = fallingApples.length - 1; i >= 0; i--) {
+        let a = fallingApples[i];
+        a.y += a.speed;
+
+        // 繪製蘋果
+        ctx.drawImage(assets.apples[a.word], a.x, a.y, a.w, a.h);
+
+        // 偵測接住
+        if (checkCollision(a, basket)) {
+            // A. 播放發音
+            new Audio(`sounds/${a.word}.mp3`).play();
+            
+            // B. 處理計數 (只有新單字才計入)
+            collectedUniqueWords.add(a.word);
+            
+            fallingApples.splice(i, 1);
+            
+            // C. 檢查過關
+            if (collectedUniqueWords.size === 10) {
+                victory();
+            }
+            continue;
+        }
+
+        // 超出邊界移除
+        if (a.y > canvas.height) {
+            fallingApples.splice(i, 1);
+        }
+    }
+
+    // 繪製右上方數字進度
+    let count = collectedUniqueWords.size;
+    if (count > 0) {
+        ctx.drawImage(assets.counts[count], 50, 50, 120, 120);
+    }
+
+    requestAnimationFrame(update);
+}
+
+// 7. 互動控制
+canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    // 籃子中心跟隨滑鼠，並限制在舞台內
+    basket.x = Math.max(0, Math.min(canvas.width - basket.w, mouseX - basket.w / 2));
+    basket.y = Math.max(0, Math.min(canvas.height - basket.h, mouseY - basket.h / 2));
+});
+
+// 8. 勝利機制
+function victory() {
+    gameActive = false;
+    new Audio('sounds/hurray.mp3').play();
+    uiLayer.style.display = 'flex';
+}
+
+document.getElementById('btn-again').addEventListener('click', startGame);
+
+</script>
+
+</body>
+</html>
