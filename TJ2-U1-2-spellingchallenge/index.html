@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>英語單字配對遊戲 - 無遮罩滿版</title>
+    <style>
+        /* ========== 1. 全域重置與禁止選取 ========== */
+        * {
+            margin: 0; padding: 0; box-sizing: border-box;
+            user-select: none; -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        html, body {
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        /* ========== 2. 主容器：背景全開 ========== */
+        #game-container {
+            width: 100vw; height: 100vh;
+            display: flex; flex-direction: column;
+            
+            /* 背景圖裝滿畫面 */
+            background-image: url('images/bg.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            
+            background-color: #764ba2; /* 備援底色 */
+        }
+
+        /* A. 上方提示區 (取消遮罩，改為完全透明) */
+        #hint-area {
+            height: 35%;
+            background: transparent; /* 重要：取消遮罩 */
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            position: relative;
+        }
+
+        #hint-image {
+            height: 75%; max-width: 90%;
+            object-fit: contain;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            /* 讓題目圖檔自帶陰影，避免融入背景 */
+            filter: drop-shadow(0 0 10px rgba(255,255,255,0.5)) drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        }
+
+        .hint-label {
+            margin-top: 10px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #ffffff; /* 改為白色文字 */
+            /* 加上文字外框線，確保在任何背景都能閱讀 */
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        }
+
+        /* B. 中間走馬燈區 (取消遮罩) */
+        #marquee-area {
+            height: 35%;
+            position: relative;
+            overflow: hidden;
+            background: transparent; /* 重要：取消遮罩 */
+        }
+
+        .word-item {
+            position: absolute; top: 20%;
+            height: 110px; width: auto;
+            will-change: left;
+            filter: drop-shadow(0 0 5px white) drop-shadow(2px 4px 6px rgba(0,0,0,0.3));
+        }
+
+        /* C. 下方操作區 (取消遮罩) */
+        #control-area {
+            height: 30%;
+            position: relative;
+            display: flex; justify-content: center; align-items: center;
+            background: transparent; /* 重要：取消遮罩 */
+        }
+
+        #jump-btn {
+            position: absolute; bottom: 30px;
+            width: 120px; cursor: pointer;
+            filter: drop-shadow(0 6px 15px rgba(0,0,0,0.5));
+            z-index: 100;
+            transition: transform 0.1s;
+        }
+
+        #jump-btn:active { transform: scale(0.9); }
+
+        #bgm-toggle {
+            position: absolute; right: 30px; bottom: 30px;
+            width: 60px; cursor: pointer; z-index: 100;
+        }
+
+        .bgm-off { filter: grayscale(100%); opacity: 0.4; }
+
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="hint-area">
+        <img id="hint-image" src="" alt="題目圖">
+        <div class="hint-label">請找出正確單字！(點擊JUMP或按空白鍵)</div>
+    </div>
+
+    <div id="marquee-area"></div>
+
+    <div id="control-area">
+        <img id="jump-btn" src="icons/jump.png" alt="跳躍">
+        <img id="bgm-toggle" src="icons/bgmusic.png" alt="音樂" class="bgm-off">
+    </div>
+</div>
+
+<audio id="audio-bgm" src="sounds/bgmusic.mp3" loop></audio>
+<audio id="audio-win" src="sounds/win.mp3"></audio>
+<audio id="audio-wrong" src="sounds/wrong.mp3"></audio>
+
+<script>
+    // 題庫資料 (對應 images/ 資料夾下的檔名)
+    const wordPairs = [
+        { id: 'ant',    hint: 'ant.png',    word: 'word_ant.png' },
+        { id: 'bee',    hint: 'bee.png',    word: 'word_bee.png' },
+        { id: 'bug',    hint: 'bug.png',    word: 'word_bug.png' },
+        { id: 'house',  hint: 'house.png',  word: 'word_house.png' },
+        { id: 'ruler',  hint: 'ruler.png',  word: 'word_ruler.png' },
+        { id: 'star',   hint: 'star.png',   word: 'word_star.png' },
+        { id: 'window', hint: 'window.png', word: 'word_window.png' },
+        { id: 'door',   hint: 'door.png',   word: 'word_door.png' }
+    ];
+
+    let currentTarget = null, lastHintIndex = -1, wordQueue = [];
+    let isJumping = false, isLocked = false, isBgmOn = false;
+    let jumpHeight = 0, jumpInterval = null;
+
+    const marqueeArea = document.getElementById('marquee-area');
+    const jumpBtn = document.getElementById('jump-btn');
+    const hintImage = document.getElementById('hint-image');
+    const audioBgm = document.getElementById('audio-bgm');
+
+    function init() {
+        nextQuestion();
+        startMarquee();
+    }
+
+    function nextQuestion() {
+        let newIndex;
+        do { newIndex = Math.floor(Math.random() * wordPairs.length); } 
+        while (newIndex === lastHintIndex);
+        
+        lastHintIndex = newIndex;
+        currentTarget = wordPairs[newIndex];
+
+        hintImage.style.transform = 'scale(0)';
+        setTimeout(() => {
+            hintImage.src = 'images/' + currentTarget.hint;
+            hintImage.style.transform = 'scale(1)';
+            isLocked = false;
+        }, 300);
+    }
+
+    function startMarquee() {
+        setInterval(() => {
+            if (isLocked) return;
+            if (wordQueue.length === 0) {
+                wordQueue = [...wordPairs].sort(() => Math.random() - 0.5);
+            }
+            createWordItem(wordQueue.shift());
+        }, 1800);
+    }
+
+    function createWordItem(data) {
+        const img = document.createElement('img');
+        img.src = 'images/' + data.word;
+        img.className = 'word-item';
+        img.dataset.id = data.id;
+        img.style.left = window.innerWidth + 'px';
+        marqueeArea.appendChild(img);
+
+        let posX = window.innerWidth;
+        function move() {
+            if (!img.parentNode) return;
+            posX -= 4;
+            img.style.left = posX + 'px';
+
+            if (isJumping && !isLocked) {
+                const r1 = jumpBtn.getBoundingClientRect();
+                const r2 = img.getBoundingClientRect();
+                if (!(r1.right < r2.left || r1.left > r2.right || r1.bottom < r2.top || r1.top > r2.bottom)) {
+                    handleCollision(img);
+                    return;
+                }
+            }
+
+            if (posX < -300) img.remove();
+            else requestAnimationFrame(move);
+        }
+        requestAnimationFrame(move);
+    }
+
+    function doJump() {
+        if (isJumping || isLocked) return;
+        isJumping = true; jumpHeight = 0;
+        let rising = true;
+        jumpInterval = setInterval(() => {
+            if (rising) {
+                jumpHeight += 16;
+                if (jumpHeight >= 380) rising = false;
+            } else {
+                jumpHeight -= 12;
+                if (jumpHeight <= 0) {
+                    jumpHeight = 0; isJumping = false;
+                    clearInterval(jumpInterval);
+                }
+            }
+            jumpBtn.style.bottom = (30 + jumpHeight) + 'px';
+        }, 16);
+    }
+
+    function handleCollision(wordImg) {
+        isLocked = true;
+        wordImg.style.visibility = 'hidden';
+        audioBgm.pause();
+
+        if (wordImg.dataset.id === currentTarget.id) {
+            document.getElementById('audio-win').play();
+            setTimeout(() => { nextQuestion(); if (isBgmOn) audioBgm.play(); }, 2000);
+        } else {
+            document.getElementById('audio-wrong').play();
+            setTimeout(() => { isLocked = false; if (isBgmOn) audioBgm.play(); }, 1500);
+        }
+    }
+
+    jumpBtn.addEventListener('click', doJump);
+    document.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); doJump(); } });
+    document.getElementById('bgm-toggle').addEventListener('click', function() {
+        isBgmOn = !isBgmOn;
+        this.classList.toggle('bgm-off', !isBgmOn);
+        isBgmOn ? audioBgm.play() : audioBgm.pause();
+    });
+
+    window.onload = init;
+</script>
+</body>
+</html>
