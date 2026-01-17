@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Picture → Word Matching Game</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --error-color: #f44336;
+            --highlight-color: #ffeb3b;
+            --text-color: #333;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background-image: url('images/bg.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            color: white;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+            margin: 15px 0;
+            font-size: 3rem;
+            z-index: 5;
+        }
+
+        .game-container {
+            display: flex;
+            width: 100%;
+            max-width: 1400px;
+            gap: 30px;
+            padding: 10px 20px;
+            box-sizing: border-box;
+            margin-bottom: 100px;
+        }
+
+        .section {
+            flex: 1; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h2 { 
+            color: white; 
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.7);
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+        }
+
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 12px;
+            width: 100%;
+        }
+
+        .word-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            width: 100%;
+        }
+
+        .img-card {
+            height: 110px;
+            border: 3px solid #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            background: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.2s, border-color 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+        }
+
+        .img-card img {
+            height: 90px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .img-card.selected {
+            border-color: var(--highlight-color);
+            transform: scale(1.08);
+            box-shadow: 0 0 15px var(--highlight-color);
+            z-index: 10;
+        }
+
+        .img-card.matched {
+            opacity: 0.2;
+            filter: grayscale(100%);
+            cursor: default;
+            pointer-events: none;
+            border-color: transparent;
+        }
+
+        .word-card {
+            height: 80px; 
+            background-image: url('images/frame.png');
+            background-size: 100% 100%; 
+            background-repeat: no-repeat;
+            background-position: center;
+            background-color: white;
+            border: none;
+            border-radius: 12px;
+            color: #333;
+            text-align: center;
+            font-size: 1.4rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px; 
+            box-sizing: border-box;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+        }
+
+        .word-card:hover:not(.matched) {
+            transform: translateY(-3px);
+            filter: brightness(1.05);
+        }
+
+        .word-card.matched {
+            background-color: var(--primary-color);
+            color: white;
+            opacity: 0.5;
+            cursor: default;
+            pointer-events: none;
+            box-shadow: none;
+        }
+
+        .word-card.wrong {
+            background-color: var(--error-color);
+            color: white;
+            animation: shake 0.4s;
+        }
+
+        .hint-bar {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            text-align: center;
+            padding: 15px 0;
+            font-size: 1.6rem;
+            z-index: 100;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Picture → Word</h1>
+
+    <div class="game-container">
+        <div class="section">
+            <h2>Images</h2>
+            <div class="image-grid" id="imageGrid"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Words</h2>
+            <div class="word-grid" id="wordGrid"></div>
+        </div>
+    </div>
+
+    <div class="hint-bar" id="hint">請先點擊一張圖片</div>
+
+    <script>
+        // 這裡已將 "yoyo" 改為 "yo-yo"
+        const words = ["ball", "yo-yo", "kite", "bike", "quilt", "queen", "quiz", "rat", "red", "run", "chair", "hair", "air"];
+        let selectedImg = null;
+        let matchedCount = 0;
+
+        const imageGrid = document.getElementById('imageGrid');
+        const wordGrid = document.getElementById('wordGrid');
+        const hintDisplay = document.getElementById('hint');
+
+        function initGame() {
+            imageGrid.innerHTML = '';
+            wordGrid.innerHTML = '';
+            selectedImg = null;
+            matchedCount = 0;
+            hintDisplay.textContent = "請先點擊一張圖片";
+
+            const shuffledImgs = [...words].sort(() => Math.random() - 0.5);
+            const shuffledWords = [...words].sort(() => Math.random() - 0.5);
+
+            shuffledImgs.forEach(word => {
+                const card = document.createElement('div');
+                card.className = 'img-card';
+                card.dataset.word = word;
+                // 注意：這裡會去抓 images/yo-yo.png
+                card.innerHTML = `<img src="images/${word}.png" alt="${word}">`;
+                card.onclick = () => selectImage(card);
+                imageGrid.appendChild(card);
+            });
+
+            shuffledWords.forEach(word => {
+                const card = document.createElement('div');
+                card.className = 'word-card';
+                card.textContent = word;
+                card.onclick = () => selectWord(card);
+                wordGrid.appendChild(card);
+            });
+        }
+
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'en-US';
+            msg.rate = 0.85;
+            window.speechSynthesis.speak(msg);
+        }
+
+        function playDing() {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.2);
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.2);
+        }
+
+        function playFinalSound() {
+            const audio = new Audio('100.mp3');
+            audio.play().catch(e => console.log("Audio blocked", e));
+        }
+
+        function selectImage(card) {
+            if (card.classList.contains('matched')) return;
+            document.querySelectorAll('.img-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            selectedImg = card;
+            speak(card.dataset.word);
+            hintDisplay.textContent = "現在請點擊對應的單字：" + card.dataset.word;
+        }
+
+        function selectWord(card) {
+            if (!selectedImg || card.classList.contains('matched')) return;
+            const targetWord = selectedImg.dataset.word;
+            const clickedWord = card.textContent;
+            speak(clickedWord);
+            if (targetWord === clickedWord) {
+                playDing();
+                selectedImg.classList.remove('selected');
+                selectedImg.classList.add('matched');
+                card.classList.add('matched');
+                hintDisplay.textContent = "正確！(Excellent!)";
+                selectedImg = null;
+                matchedCount++;
+                if (matchedCount === words.length) {
+                    setTimeout(checkWin, 500);
+                }
+            } else {
+                card.classList.add('wrong');
+                hintDisplay.textContent = "不對喔，再試試看！";
+                setTimeout(() => card.classList.remove('wrong'), 400);
+            }
+        }
+
+        function checkWin() {
+            playFinalSound();
+            hintDisplay.textContent = "🎉 太棒了！全部完成！";
+            setTimeout(() => {
+                if (confirm("🎉 太棒了！全部完成！\n是否重新開始遊戲？")) {
+                    initGame();
+                }
+            }, 300);
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
