@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>翻牌配對 - TV 教室模式</title>
+    <style>
+        :root {
+            --primary-bg: #f0f0f0;
+            --sidebar-bg: rgba(255, 255, 255, 0.8);
+            --card-back: #3498db;
+            --card-front: #ffffff;
+            --text-color: #333;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: url('assets/ui/backgrounds/bg_main.png') center/cover no-repeat #eee;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        #stage {
+            width: 1280px;
+            height: 720px;
+            display: flex;
+            background: rgba(255, 255, 255, 0.1);
+            position: relative;
+            box-shadow: 0 0 50px rgba(0,0,0,0.3);
+        }
+
+        #main-game {
+            width: 70%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        #message-area {
+            height: 15%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #board-area {
+            height: 85%;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 15px;
+            padding: 10px;
+        }
+
+        #sidebar {
+            width: 30%;
+            height: 100%;
+            background: var(--sidebar-bg);
+            display: flex;
+            flex-direction: column;
+            padding: 30px;
+            border-left: 2px solid rgba(0,0,0,0.1);
+        }
+
+        .level-selector {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .level-btn {
+            padding: 15px 20px;
+            font-size: 24px;
+            cursor: pointer;
+            border: 3px solid transparent;
+            border-radius: 15px;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            opacity: 0.5;
+            transition: 0.3s;
+        }
+
+        .level-btn.active {
+            opacity: 1;
+            border-color: #27ae60;
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .icon-img {
+            width: 45px;
+            height: 45px;
+            object-fit: contain;
+        }
+
+        .spacer { height: 25%; }
+
+        .controls {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .ctrl-btn {
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            padding: 5px;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ctrl-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .ctrl-icon {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+
+        #timer-ui {
+            position: absolute;
+            top: 20px;
+            right: 32%;
+            font-size: 28px;
+            font-family: monospace;
+            background: rgba(0,0,0,0.7);
+            color: #0f0;
+            padding: 5px 15px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .card { perspective: 1000px; cursor: pointer; }
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .card.flipped .card-inner { transform: rotateY(180deg); }
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 2px solid #ddd;
+        }
+        .card-back {
+            background: url('assets/ui/cards/card_back.png') center/cover #3498db;
+        }
+        .card-front {
+            background: white;
+            transform: rotateY(180deg);
+        }
+        .card-front img { max-width: 80%; max-height: 80%; object-fit: contain; }
+        .card-front span { font-size: 24px; font-weight: bold; }
+
+        #win-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+<div id="stage">
+    <div id="timer-ui">0.00</div>
+
+    <div id="main-game">
+        <div id="message-area">Find the matching pair!</div>
+        <div id="board-area"></div>
+    </div>
+
+    <div id="sidebar">
+        <div class="level-selector">
+            <div class="level-btn active" onclick="setLevel(1)">
+                <img src="assets/ui/icons/hint.png" class="icon-img">
+                <span>Level 1</span>
+            </div>
+            <div class="level-btn" onclick="setLevel(2)">
+                <img src="assets/ui/icons/sound.png" class="icon-img">
+                <span>Level 2</span>
+            </div>
+            <div class="level-btn" onclick="setLevel(3)">
+                <img src="assets/ui/icons/timer.png" class="icon-img">
+                <span>Level 3</span>
+            </div>
+        </div>
+        
+        <div class="spacer"></div>
+
+        <div class="controls">
+            <button class="ctrl-btn" onclick="resetGame()" title="Reset">
+                <img src="assets/ui/icons/reset.png" class="ctrl-icon">
+            </button>
+            <button class="ctrl-btn" onclick="toggleFullscreen()" title="Fullscreen">
+                <img src="assets/ui/icons/fullscreen.png" class="ctrl-icon">
+            </button>
+        </div>
+    </div>
+
+    <div id="win-overlay">
+        <h1>Excellent!</h1>
+        <p id="final-time" style="font-size: 48px; margin: 20px 0;">0.00s</p>
+    </div>
+</div>
+
+<script>
+    const CONFIG = {
+        // 根據您的圖片資料夾內容更新
+        PAIRS: [
+            {word: 'air', img: 'air.png'},
+            {word: 'ball', img: 'ball.png'},
+            {word: 'bike', img: 'bike.png'},
+            {word: 'hair', img: 'hair.png'},
+            {word: 'kite', img: 'kite.png'},
+            {word: 'queen', img: 'queen.png'},
+            {word: 'quilt', img: 'quilt.png'},
+            {word: 'quiz', img: 'quiz.png'},
+            {word: 'rat', img: 'rat.png'},
+            {word: 'run', img: 'run.png'}
+            // 您資料夾中還有 red.png, yo-yo.png，
+            // 若要全部 12 對，請手動增加並調整下方 matchedCount === 24
+        ],
+        TTS: { lang: 'en-US', rate: 0.9, pitch: 1.0 },
+        WIN_SHOW_MS: 1800,
+        SOUNDS: {
+            flip: 'assets/sounds/101.mp3',
+            match: 'assets/sounds/100.mp3',
+            win: 'assets/sounds/102.mp3'
+        }
+    };
+
+    let currentLevel = 1;
+    let flippedCards = [];
+    let matchedCount = 0;
+    let startTime = null;
+    let timerInterval = null;
+    let isLocked = false;
+
+    function initGame() {
+        const board = document.getElementById('board-area');
+        board.innerHTML = '';
+        matchedCount = 0;
+        flippedCards = [];
+        isLocked = false;
+        stopTimer();
+        updateTimerUI(0);
+
+        let cards = [];
+        CONFIG.PAIRS.forEach(item => {
+            cards.push({ type: 'text', value: item.word, key: item.word });
+            cards.push({ type: 'img', value: item.img, key: item.word });
+        });
+
+        cards.sort(() => Math.random() - 0.5);
+
+        cards.forEach((data) => {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'card';
+            cardEl.dataset.key = data.key;
+            cardEl.dataset.type = data.type;
+            
+            cardEl.innerHTML = `
+                <div class="card-inner">
+                    <div class="card-back"></div>
+                    <div class="card-front">
+                        ${data.type === 'text' ? `<span>${data.value}</span>` : `<img src="images/${data.value}" alt="">`}
+                    </div>
+                </div>
+            `;
+            
+            cardEl.addEventListener('click', () => handleCardClick(cardEl));
+            board.appendChild(cardEl);
+        });
+    }
+
+    function handleCardClick(card) {
+        if (isLocked || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+        if (!startTime) startTimer();
+        playSound('flip');
+        speak(card.dataset.key);
+        card.classList.add('flipped');
+        flippedCards.push(card);
+        if (flippedCards.length === 2) {
+            checkMatch();
+        }
+    }
+
+    function checkMatch() {
+        isLocked = true;
+        const [c1, c2] = flippedCards;
+        const isMatch = (c1.dataset.key === c2.dataset.key) && (c1.dataset.type !== c2.dataset.type);
+        if (isMatch) {
+            setTimeout(() => {
+                playSound('match');
+                c1.classList.add('matched');
+                c2.classList.add('matched');
+                matchedCount += 2;
+                flippedCards = [];
+                isLocked = false;
+                // 判斷是否全部配對完成（目前 PAIRS 有 10 組，共 20 張）
+                if (matchedCount === CONFIG.PAIRS.length * 2) handleWin();
+            }, 300);
+        } else {
+            setTimeout(() => {
+                c1.classList.remove('flipped');
+                c2.classList.remove('flipped');
+                flippedCards = [];
+                isLocked = false;
+            }, 650);
+        }
+    }
+
+    function speak(text) {
+        window.speechSynthesis.cancel();
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = CONFIG.TTS.lang;
+        msg.rate = CONFIG.TTS.rate;
+        msg.pitch = CONFIG.TTS.pitch;
+        window.speechSynthesis.speak(msg);
+    }
+
+    function playSound(type) {
+        const audio = new Audio(CONFIG.SOUNDS[type]);
+        audio.play().catch(() => {});
+    }
+
+    function setLevel(lv) {
+        currentLevel = lv;
+        document.querySelectorAll('.level-btn').forEach((btn, idx) => {
+            btn.classList.toggle('active', (idx + 1) === lv);
+        });
+        document.getElementById('timer-ui').style.display = (lv === 3) ? 'block' : 'none';
+        resetGame();
+    }
+
+    function startTimer() {
+        startTime = Date.now();
+        timerInterval = setInterval(() => {
+            const elapsed = (Date.now() - startTime) / 1000;
+            updateTimerUI(elapsed);
+        }, 10);
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+        startTime = null;
+    }
+
+    function updateTimerUI(seconds) {
+        const text = seconds.toFixed(2);
+        document.getElementById('timer-ui').textContent = text;
+        return text;
+    }
+
+    function handleWin() {
+        stopTimer();
+        const finalTime = document.getElementById('timer-ui').textContent;
+        document.getElementById('final-time').textContent = finalTime + "s";
+        playSound('win');
+        const overlay = document.getElementById('win-overlay');
+        overlay.style.display = 'flex';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            resetGame();
+        }, CONFIG.WIN_SHOW_MS);
+    }
+
+    function resetGame() {
+        initGame();
+    }
+
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    }
+
+    window.onload = initGame;
+</script>
+
+</body>
+</html>
